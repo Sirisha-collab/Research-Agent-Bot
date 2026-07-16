@@ -1,8 +1,3 @@
-"""
-Retrieval module
-Main search, retrieval, and integration with all features
-"""
-
 from typing import List, Dict, Optional, Tuple
 from embedding import embedding_manager
 from metrics import evaluate_metrics, MetricsCalculator
@@ -14,10 +9,8 @@ import google.generativeai as genai
 
 
 class ResearchAssistant:
-    """Main research assistant class"""
     
     def __init__(self):
-        """Initialize research assistant"""
         self.embedding_manager = embedding_manager
         self.doc_processor = DocumentProcessor()
         self.conversation_history = []
@@ -26,44 +19,22 @@ class ResearchAssistant:
         self.last_auto_summaries = {}
     
     def add_document(self, pdf_path: str) -> Tuple[bool, str]:
-        """
-        Add a PDF document to the system
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            Tuple of (success, message)
-        """
         success, message = self.doc_processor.add_pdf(pdf_path)
         
         if success:
-            # Extract and index document text
             doc = self.doc_processor.documents[-1]
-            
-            # Chunk the text for better retrieval
+
             chunks = PDFProcessor.chunk_text(doc["text"], chunk_size=500, overlap=100)
             
-            # Add chunks to embedding index
             self.embedding_manager.add_documents(chunks, [{"source": doc["filename"]} for _ in chunks])
             
-            # Save index
             self.embedding_manager.save_index()
         
         return success, message
     
     def generate_auto_summaries(self, doc_id: Optional[int] = None) -> Dict:
-        """
-        Automatically generate summaries for a document
         
-        Args:
-            doc_id: Document ID (if None, use last added document)
-            
-        Returns:
-            Dictionary with summaries for all expertise levels
-        """
         try:
-            # Get document text
             if doc_id is not None:
                 text = self.doc_processor.get_document_text(doc_id)
             elif self.doc_processor.documents:
@@ -81,12 +52,11 @@ class ResearchAssistant:
                     "message": "Could not retrieve document text",
                     "summaries": {}
                 }
-            
-            # Limit text to first 3000 characters for efficiency
+
             if len(text) > 3000:
                 text = text[:3000] + "..."
             
-            # Generate summaries for all expertise levels
+            # Generate summaries for all levels
             summaries = {}
             expertise_levels = ["beginner", "intermediate", "expert"]
             
@@ -110,7 +80,6 @@ class ResearchAssistant:
                         "error": str(e)
                     }
             
-            # Store last auto summaries
             self.last_auto_summaries = summaries
             
             return {
@@ -131,17 +100,7 @@ class ResearchAssistant:
         query: str, 
         k: int = config.RETRIEVAL_TOP_K
     ) -> List[Dict]:
-        """
-        Retrieve relevant documents
-        
-        Args:
-            query: Search query
-            k: Number of results
-            
-        Returns:
-            List of retrieved documents
-        """
-        # Store query
+
         self.last_query = query
         
         # Search
@@ -166,18 +125,7 @@ class ResearchAssistant:
         include_summary: bool = True,
         expertise_level: str = "intermediate"
     ) -> Dict:
-        """
-        Query the assistant with optional summary
-        
-        Args:
-            query: Query text
-            include_summary: Whether to generate summary
-            expertise_level: Expertise level for summary
-            
-        Returns:
-            Dictionary with query results
-        """
-        # Retrieve relevant documents
+
         retrieved = self.retrieve(query)
         
         if not retrieved:
@@ -202,7 +150,6 @@ class ResearchAssistant:
             "results": retrieved
         }
         
-        # Generate summary if requested
         if include_summary:
             summary = SummaryGenerator.generate_summary(combined_text, expertise_level)
             result["summary"] = summary
@@ -211,7 +158,6 @@ class ResearchAssistant:
         return result
     
     def _generate_response(self, query: str, context: str) -> str:
-        """Generate LLM response based on query and context"""
         prompt = f"""Based on the following context, answer the query concisely.
 
 Query: {query}
@@ -236,16 +182,7 @@ Provide a helpful answer based on the context provided."""
         doc_id: Optional[int] = None,
         num_questions: int = config.NUM_QUESTIONS
     ) -> Dict:
-        """
-        Generate research questions for a document
-        
-        Args:
-            doc_id: Document ID (if None, use last retrieved)
-            num_questions: Number of questions per category
-            
-        Returns:
-            Dictionary of questions by category
-        """
+
         # Get document text
         if doc_id is not None:
             text = self.doc_processor.get_document_text(doc_id)
@@ -276,17 +213,7 @@ Provide a helpful answer based on the context provided."""
         doc_id: Optional[int] = None,
         expertise_levels: Optional[List[str]] = None
     ) -> Dict[str, str]:
-        """
-        Generate summaries at different expertise levels
-        
-        Args:
-            doc_id: Document ID (if None, use last retrieved)
-            expertise_levels: List of expertise levels
-            
-        Returns:
-            Dictionary of summaries by expertise level
-        """
-        # Get document text
+
         if doc_id is not None:
             text = self.doc_processor.get_document_text(doc_id)
         elif self.last_results:
@@ -304,15 +231,7 @@ Provide a helpful answer based on the context provided."""
         self,
         relevant_doc_ids: List[int]
     ) -> Dict:
-        """
-        Evaluate retrieval quality with ground truth
-        
-        Args:
-            relevant_doc_ids: List of IDs of relevant documents
-            
-        Returns:
-            Dictionary of evaluation metrics
-        """
+
         if not self.last_results:
             return {"error": "No retrieval results to evaluate"}
         
@@ -331,11 +250,9 @@ Provide a helpful answer based on the context provided."""
         }
     
     def get_document_list(self) -> List[Dict]:
-        """Get list of all documents in system"""
         return self.doc_processor.list_documents()
     
     def clear_index(self):
-        """Clear all data"""
         self.embedding_manager.clear_index()
         self.doc_processor.clear_all()
         self.conversation_history = []
@@ -343,19 +260,15 @@ Provide a helpful answer based on the context provided."""
 
 
 class QueryCache:
-    """Cache for query results"""
-    
+
     def __init__(self, max_size: int = 100):
-        """Initialize cache"""
         self.cache = {}
         self.max_size = max_size
     
     def get(self, query: str) -> Optional[Dict]:
-        """Get cached result"""
         return self.cache.get(query.lower())
     
     def put(self, query: str, result: Dict):
-        """Cache result"""
         if len(self.cache) >= self.max_size:
             # Remove oldest entry
             self.cache.pop(next(iter(self.cache)))
@@ -363,7 +276,6 @@ class QueryCache:
         self.cache[query.lower()] = result
     
     def clear(self):
-        """Clear cache"""
         self.cache = {}
 
 

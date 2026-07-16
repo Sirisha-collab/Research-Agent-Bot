@@ -11,6 +11,7 @@ from typing import List, Optional, Dict
 import os
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 
 from config import config
 from retrieval import research_assistant, query_cache
@@ -18,6 +19,11 @@ from summary import SummaryGenerator, SummaryValidator
 from questions import QuestionGenerator
 from metrics import evaluate_metrics
 import google.generativeai as genai
+
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+
+print("Working", api_key)
 
 # Initialize Gemini API
 try:

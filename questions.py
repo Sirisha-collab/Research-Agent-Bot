@@ -1,8 +1,3 @@
-"""
-Research questions generation module
-Automatically generates research questions from document content
-"""
-
 import google.generativeai as genai
 import json
 import os
@@ -12,7 +7,6 @@ from config import config
 
 
 class QuestionGenerator:
-    """Generate research questions from documents"""
     
     QUESTION_CATEGORIES = {
         "objectives": "Main research objectives and goals",
@@ -28,17 +22,7 @@ class QuestionGenerator:
         num_questions: int = config.NUM_QUESTIONS,
         categories: Optional[List[str]] = None
     ) -> Dict[str, List[str]]:
-        """
-        Generate research questions from document
-        
-        Args:
-            document_text: Document text to analyze
-            num_questions: Number of questions per category
-            categories: Specific categories to generate (default: all)
-            
-        Returns:
-            Dictionary of questions by category
-        """
+
         if categories is None:
             categories = list(QuestionGenerator.QUESTION_CATEGORIES.keys())
         
@@ -69,7 +53,6 @@ class QuestionGenerator:
     
     @staticmethod
     def _get_system_instruction() -> str:
-        """Get system instruction for question generation"""
         return """You are an expert research analyst. Generate insightful research questions 
         that would help understand the key aspects of academic papers and research documents.
         Questions should be:
@@ -86,7 +69,7 @@ class QuestionGenerator:
         num_questions: int, 
         categories: List[str]
     ) -> str:
-        """Prepare the question generation prompt"""
+
         # Limit document text to avoid token limits
         max_chars = 3000
         if len(document_text) > max_chars:
@@ -118,7 +101,6 @@ Only include JSON in your response, no additional text."""
     
     @staticmethod
     def _parse_response(response_text: str, categories: List[str]) -> Dict[str, List[str]]:
-        """Parse question generation response"""
         try:
             # Try to extract JSON from response
             json_start = response_text.find('{')
@@ -142,7 +124,6 @@ Only include JSON in your response, no additional text."""
 
 
 class QuestionStorage:
-    """Store and retrieve generated questions"""
     
     @staticmethod
     def save_questions(
@@ -150,17 +131,7 @@ class QuestionStorage:
         document_name: str, 
         storage_dir: str = "questions_storage"
     ) -> str:
-        """
-        Save generated questions to file
-        
-        Args:
-            questions: Questions dictionary
-            document_name: Name of the document
-            storage_dir: Directory to store questions
-            
-        Returns:
-            Path to saved file
-        """
+
         os.makedirs(storage_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -183,15 +154,7 @@ class QuestionStorage:
     
     @staticmethod
     def load_questions(filepath: str) -> Dict:
-        """
-        Load questions from file
-        
-        Args:
-            filepath: Path to questions file
-            
-        Returns:
-            Questions dictionary
-        """
+
         try:
             with open(filepath, 'r') as f:
                 data = json.load(f)
@@ -202,7 +165,6 @@ class QuestionStorage:
     
     @staticmethod
     def list_saved_questions(storage_dir: str = "questions_storage") -> List[str]:
-        """List all saved question files"""
         if not os.path.exists(storage_dir):
             return []
         
@@ -214,11 +176,9 @@ class QuestionStorage:
 
 
 class QuestionSelector:
-    """Interactive question selection and retrieval"""
     
     @staticmethod
     def format_for_display(questions: Dict[str, List[str]]) -> str:
-        """Format questions for display"""
         lines = []
         lines.append("=" * 80)
         lines.append("GENERATED RESEARCH QUESTIONS")
@@ -235,16 +195,7 @@ class QuestionSelector:
     
     @staticmethod
     def select_question(questions: Dict[str, List[str]], index: int) -> Optional[str]:
-        """
-        Select a specific question
-        
-        Args:
-            questions: Questions dictionary
-            index: Index of question (0-based, across all categories)
-            
-        Returns:
-            Selected question or None
-        """
+
         all_questions = []
         for category_qs in questions.values():
             all_questions.extend(category_qs)
@@ -256,7 +207,6 @@ class QuestionSelector:
     
     @staticmethod
     def get_all_questions(questions: Dict[str, List[str]]) -> List[str]:
-        """Get all questions as a flat list"""
         all_questions = []
         for category_qs in questions.values():
             all_questions.extend(category_qs)
@@ -268,16 +218,7 @@ def generate_research_questions(
     document_text: str, 
     num_questions: int = config.NUM_QUESTIONS
 ) -> Dict[str, List[str]]:
-    """
-    Generate research questions from document
-    
-    Args:
-        document_text: Document text
-        num_questions: Number of questions per category
-        
-    Returns:
-        Dictionary of questions by category
-    """
+
     return QuestionGenerator.generate_questions(document_text, num_questions)
 
 
@@ -285,15 +226,12 @@ def store_generated_questions(
     questions: Dict[str, List[str]], 
     document_name: str = "research_paper"
 ) -> str:
-    """Store generated questions"""
     return QuestionStorage.save_questions(questions, document_name)
 
 
 def load_research_questions(filepath: str) -> Dict:
-    """Load questions from file"""
     return QuestionStorage.load_questions(filepath)
 
 
 def display_questions_for_selection(questions: Dict[str, List[str]]) -> str:
-    """Display questions for user selection"""
     return QuestionSelector.format_for_display(questions)
