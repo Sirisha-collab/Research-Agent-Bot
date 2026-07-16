@@ -1,0 +1,35 @@
+# Research Assistant Bot - Python Dependencies
+
+# Core LLM & Embeddings
+google-generativeai>=0.3.0
+langgraph>=0.1.0
+langchain>=0.1.0
+langchain-google-genai>=0.1.0
+
+# Vector Search & Indexing
+faiss-cpu>=1.7.4
+
+# PDF Processing
+pypdf>=3.14.0
+
+# API Server
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Web Search
+duckduckgo-search>=3.9.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+
+# Async Support
+nest-asyncio>=1.5.8
+
+# Development (Optional)
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.1.0
