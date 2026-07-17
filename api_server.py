@@ -1,8 +1,3 @@
-"""
-FastAPI server for Research Assistant Bot
-Provides REST API for all features
-"""
-
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,6 +15,7 @@ from questions import QuestionGenerator
 from metrics import evaluate_metrics
 import google.generativeai as genai
 
+
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
@@ -35,7 +31,7 @@ except Exception as e:
 # Create FastAPI app
 app = FastAPI(
     title="Research Assistant Bot API",
-    description="AI-powered research assistant with retrieval, summarization, and question generation",
+    description="Research assistant with retrieval, summarization, and question generation",
     version="1.0.0"
 )
 
@@ -55,7 +51,6 @@ os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 # ==================== Pydantic Models ====================
 
 class QueryRequest(BaseModel):
-    """Query request model"""
     query: str
     include_summary: bool = True
     expertise_level: str = "intermediate"
@@ -63,25 +58,22 @@ class QueryRequest(BaseModel):
 
 
 class SummaryRequest(BaseModel):
-    """Summary generation request"""
     text: str
     expertise_level: str = "intermediate"
 
 
 class QuestionsRequest(BaseModel):
-    """Research questions request"""
-    text: str
+    # text: str         #pdf questions changes
+    pdf_path: str
     num_questions: int = 5
     categories: Optional[List[str]] = None
 
 
 class EvaluationRequest(BaseModel):
-    """Evaluation request"""
     relevant_doc_ids: List[int]
 
 
 class DocumentInfo(BaseModel):
-    """Document information"""
     id: int
     filename: str
     num_pages: int
@@ -91,7 +83,6 @@ class DocumentInfo(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "Research Assistant Bot",
@@ -101,7 +92,7 @@ async def health_check():
 
 @app.get("/config")
 async def get_config():
-    """Get current configuration"""
+
     is_valid, error = config.validate()
     return {
         "valid": is_valid,
@@ -114,7 +105,6 @@ async def get_config():
 
 @app.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...)):
-    """Upload and process PDF document with automatic summary generation"""
     try:
         # Validate file
         if not file.filename.lower().endswith('.pdf'):
@@ -139,7 +129,6 @@ async def upload_document(file: UploadFile = File(...)):
         success, message = research_assistant.add_document(file_path)
         
         if success:
-            # Get the document ID (last added document)
             doc_id = len(research_assistant.doc_processor.documents) - 1
             
             # Automatically generate summaries
@@ -164,7 +153,6 @@ async def upload_document(file: UploadFile = File(...)):
 
 @app.get("/documents")
 async def list_documents():
-    """List all uploaded documents"""
     try:
         documents = research_assistant.get_document_list()
         return {
@@ -178,7 +166,7 @@ async def list_documents():
 
 @app.delete("/documents/clear")
 async def clear_all_documents():
-    """Clear all documents"""
+
     try:
         research_assistant.clear_index()
         return {
@@ -193,7 +181,7 @@ async def clear_all_documents():
 
 @app.post("/query")
 async def query_assistant(request: QueryRequest):
-    """Query the research assistant"""
+
     try:
         # Check cache
         if request.use_cache:
@@ -228,7 +216,6 @@ async def query_assistant(request: QueryRequest):
 
 @app.get("/retrieve")
 async def retrieve_documents(query: str, k: int = 5):
-    """Retrieve documents for a query"""
     try:
         results = research_assistant.retrieve(query, k)
         return {
@@ -245,7 +232,6 @@ async def retrieve_documents(query: str, k: int = 5):
 
 @app.post("/summaries/generate")
 async def generate_summary(request: SummaryRequest):
-    """Generate summary at specific expertise level"""
     try:
         summary = SummaryGenerator.generate_summary(
             request.text,
@@ -266,7 +252,6 @@ async def generate_summary(request: SummaryRequest):
 
 @app.post("/summaries/multi-level")
 async def generate_multi_level_summaries(text: str):
-    """Generate summaries at all expertise levels"""
     try:
         summaries = SummaryGenerator.generate_multiple_summaries(text)
         
@@ -287,31 +272,65 @@ async def generate_multi_level_summaries(text: str):
 
 
 # ==================== Research Questions ====================
+from fastapi import APIRouter, HTTPException
+from pathlib import Path
+import fitz  # PyMuPDF
+
+router = APIRouter()
 
 @app.post("/questions/generate")
 async def generate_questions(request: QuestionsRequest):
-    """Generate research questions"""
     try:
+        pdf_path = Path(request.pdf_path)
+
+        if not pdf_path.exists():
+            raise FileNotFoundError("PDF file not found")
+
+        # Extract text from PDF
+        doc = fitz.open(pdf_path)
+
+        text = ""
+        for page in doc:
+            text += page.get_text()
+
+        # Generate questions using existing generator
         questions = QuestionGenerator.generate_questions(
-            request.text,
+            text,
             request.num_questions,
             request.categories
         )
-        
+
         return {
             "status": "success",
             "num_questions": request.num_questions,
             "questions": questions
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# @app.post("/questions/generate")
+# async def generate_questions(request: QuestionsRequest):
+#     try:
+#         questions = QuestionGenerator.generate_questions(
+#             request.text,
+#             request.num_questions,
+#             request.categories
+#         )
+        
+#         return {
+#             "status": "success",
+#             "num_questions": request.num_questions,
+#             "questions": questions
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== Metrics & Evaluation ====================
 
 @app.post("/evaluate/retrieval")
 async def evaluate_retrieval(request: EvaluationRequest):
-    """Evaluate retrieval quality"""
     try:
         metrics = research_assistant.evaluate_retrieval(request.relevant_doc_ids)
         
@@ -325,7 +344,6 @@ async def evaluate_retrieval(request: EvaluationRequest):
 
 @app.get("/index/stats")
 async def get_index_stats():
-    """Get index statistics"""
     try:
         stats = research_assistant.embedding_manager.get_index_stats()
         
@@ -341,7 +359,6 @@ async def get_index_stats():
 
 @app.delete("/cache/clear")
 async def clear_cache():
-    """Clear query cache"""
     try:
         query_cache.clear()
         return {
@@ -356,7 +373,6 @@ async def clear_cache():
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
-    """Handle general exceptions"""
     return JSONResponse(
         status_code=500,
         content={
@@ -370,7 +386,6 @@ async def general_exception_handler(request, exc):
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
     return {
         "name": "Research Assistant Bot API",
         "version": "1.0.0",

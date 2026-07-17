@@ -9,19 +9,10 @@ except ImportError:
 
 
 class PDFProcessor:
-    """Process and extract text from PDF files"""
     
     @staticmethod
     def extract_text(pdf_path: str) -> Tuple[str, int]:
-        """
-        Extract text from PDF file
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            Tuple of (extracted_text, num_pages)
-        """
+
         try:
             reader = PdfReader(pdf_path)
             text_parts = []
@@ -44,15 +35,7 @@ class PDFProcessor:
     
     @staticmethod
     def extract_text_by_pages(pdf_path: str) -> List[Dict]:
-        """
-        Extract text page by page
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            List of dictionaries with page content and metadata
-        """
+
         try:
             reader = PdfReader(pdf_path)
             pages = []
@@ -80,17 +63,7 @@ class PDFProcessor:
     
     @staticmethod
     def chunk_text(text: str, chunk_size: int = 500, overlap: int = 100) -> List[str]:
-        """
-        Split text into overlapping chunks
-        
-        Args:
-            text: Text to chunk
-            chunk_size: Number of characters per chunk
-            overlap: Number of overlapping characters between chunks
-            
-        Returns:
-            List of text chunks
-        """
+
         if len(text) <= chunk_size:
             return [text]
         
@@ -106,16 +79,6 @@ class PDFProcessor:
     
     @staticmethod
     def validate_pdf(pdf_path: str) -> Tuple[bool, Optional[str]]:
-        """
-        Validate PDF file
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        # Check if file exists
         if not os.path.exists(pdf_path):
             return False, "File not found"
         
@@ -138,15 +101,7 @@ class PDFProcessor:
     
     @staticmethod
     def get_pdf_info(pdf_path: str) -> Dict:
-        """
-        Get PDF metadata and information
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            Dictionary with PDF information
-        """
+
         try:
             reader = PdfReader(pdf_path)
             
@@ -172,24 +127,13 @@ class PDFProcessor:
 
 
 class DocumentProcessor:
-    """Process multiple documents and manage document collection"""
     
     def __init__(self):
-        """Initialize document processor"""
         self.documents = []
         self.document_index = {}
     
     def add_pdf(self, pdf_path: str) -> Tuple[bool, Optional[str]]:
-        """
-        Add PDF to collection
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            Tuple of (success, message)
-        """
-        # Validate PDF
+
         is_valid, error_msg = PDFProcessor.validate_pdf(pdf_path)
         if not is_valid:
             return False, error_msg
@@ -218,13 +162,13 @@ class DocumentProcessor:
         return True, f"Added {os.path.basename(pdf_path)} ({num_pages} pages)"
     
     def get_document_text(self, doc_id: int) -> Optional[str]:
-        """Get document text by ID"""
+
         if 0 <= doc_id < len(self.documents):
             return self.documents[doc_id]["text"]
         return None
     
     def get_document_info(self, doc_id: int) -> Optional[Dict]:
-        """Get document info by ID"""
+
         if 0 <= doc_id < len(self.documents):
             doc = self.documents[doc_id]
             return {
@@ -236,7 +180,7 @@ class DocumentProcessor:
         return None
     
     def list_documents(self) -> List[Dict]:
-        """List all documents in collection"""
+
         return [
             {
                 "id": doc["id"],
@@ -247,31 +191,31 @@ class DocumentProcessor:
         ]
     
     def remove_document(self, doc_id: int) -> bool:
-        """Remove document from collection"""
+
         if 0 <= doc_id < len(self.documents):
             del self.documents[doc_id]
             return True
         return False
     
     def clear_all(self):
-        """Clear all documents"""
+
         self.documents = []
         self.document_index = {}
 
 
 # Utility functions
 def extract_pdf_text(pdf_path: str) -> str:
-    """Extract text from PDF"""
+
     text, _ = PDFProcessor.extract_text(pdf_path)
     return text
 
 
 def chunk_pdf_text(text: str, chunk_size: int = 500) -> List[str]:
-    """Chunk PDF text"""
+
     return PDFProcessor.chunk_text(text, chunk_size)
 
 
 def validate_pdf_file(pdf_path: str) -> bool:
-    """Validate PDF file"""
+
     is_valid, _ = PDFProcessor.validate_pdf(pdf_path)
     return is_valid

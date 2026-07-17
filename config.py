@@ -1,8 +1,3 @@
-"""
-Configuration module for Research Assistant Bot
-Handles API keys, model selection, and environment variables
-"""
-
 import os
 from typing import Optional
 from dotenv import load_dotenv
@@ -12,8 +7,7 @@ load_dotenv()
 
 
 class Config:
-    """Configuration class for the Research Assistant Bot"""
-    
+
     # Gemini Models
     GEMINI_MODEL = "gemini-2.5-flash"
     GEMINI_EMBED_MODEL = "models/gemini-embedding-001"
@@ -51,14 +45,13 @@ class Config:
     
     @classmethod
     def validate(cls) -> tuple[bool, Optional[str]]:
-        """Validate configuration"""
+
         if not cls.GEMINI_API_KEY:
             return False, "GEMINI_API_KEY not set. Please set it in .env file"
         return True, None
     
     @classmethod
     def to_dict(cls) -> dict:
-        """Convert configuration to dictionary"""
         return {
             "model": cls.GEMINI_MODEL,
             "embed_model": cls.GEMINI_EMBED_MODEL,

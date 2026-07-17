@@ -17,12 +17,12 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: black;
 }
 
 /* Header */
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: black;
   color: white;
   padding: 2.5rem 2rem;
   text-align: center;
@@ -67,6 +67,7 @@ body {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -100,12 +101,12 @@ body {
 
 .tab-button:hover {
   background: #f9f9f9;
-  color: #667eea;
+  color: grey;
 }
 
 .tab-button.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: grey;
+  border-bottom-color: grey;
 }
 
 /* Main Content */
@@ -125,7 +126,7 @@ body {
 }
 
 .tab-content h2 {
-  color: #667eea;
+  color: grey;
   margin-bottom: 1.5rem;
   font-size: 1.8rem;
   border-bottom: 2px solid #f0f0f0;
@@ -180,7 +181,7 @@ body {
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #828285;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -202,7 +203,7 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: green;
   color: white;
   box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
 }
@@ -235,7 +236,7 @@ body {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: grey;
   color: white;
   padding: 1.5rem;
   border-radius: 8px;
@@ -296,12 +297,12 @@ body {
   padding: 1.5rem;
   border-radius: 6px;
   margin-bottom: 1rem;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #515151;
 }
 
 .query-response h4,
 .query-summary h4 {
-  color: #667eea;
+  color: #515151;
   margin-bottom: 0.75rem;
 }
 
@@ -346,12 +347,12 @@ body {
 }
 
 .summary-card:hover {
-  border-color: #667eea;
+  border-color: #515151;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .summary-card h4 {
-  color: #667eea;
+  color: #515151;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid #f0f0f0;
@@ -396,7 +397,7 @@ body {
 }
 
 .question-category h4 {
-  color: #667eea;
+  color: #727376;
   margin-bottom: 1rem;
 }
 
@@ -419,7 +420,7 @@ body {
 }
 
 .metric-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #bdbec1 0%, #764ba2 100%);
   color: white;
   padding: 1rem;
   border-radius: 6px;
@@ -461,13 +462,13 @@ body {
   display: block;
   padding: 2rem;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border: 2px dashed #667eea;
+  border: 2px dashed #a6a7ab;
   border-radius: 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 600;
-  color: #667eea;
+  color: #bfc0c3;
 }
 
 .upload-label:hover {
@@ -489,7 +490,7 @@ body {
   background: #f9f9f9;
   border-radius: 6px;
   margin-bottom: 0.5rem;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #b6b7bb;
 }
 
 .doc-name {
@@ -498,7 +499,7 @@ body {
 }
 
 .doc-pages {
-  background: #667eea;
+  background: #797a7d;
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
@@ -511,45 +512,45 @@ body {
   .header {
     padding: 1.5rem 1rem;
   }
-  
+
   .header h1 {
     font-size: 1.8rem;
   }
-  
+
   .tabs {
     padding: 0 1rem;
     overflow-x: auto;
     gap: 0.5rem;
   }
-  
+
   .tab-button {
     padding: 0.75rem 1rem;
     font-size: 0.85rem;
   }
-  
+
   .main-content {
     padding: 1rem;
   }
-  
+
   .tab-content {
     padding: 1.5rem;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
-  
+
   .summaries-grid,
   .questions-categories,
   .metrics-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .upload-section {
     flex-direction: column;
   }
-  
+
   .tab-content h2 {
     font-size: 1.4rem;
   }
@@ -559,32 +560,32 @@ body {
   .header h1 {
     font-size: 1.4rem;
   }
-  
+
   .header p {
     font-size: 0.9rem;
   }
-  
+
   .tabs {
     flex-direction: column;
     border-bottom: none;
   }
-  
+
   .tab-button {
     text-align: left;
     border-bottom: none;
     border-left: 3px solid transparent;
     padding: 0.75rem 1rem;
   }
-  
+
   .tab-button.active {
-    border-left-color: #667eea;
+    border-left-color: grey;
     border-bottom-color: transparent;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .doc-item {
     flex-direction: column;
     align-items: flex-start;
@@ -594,9 +595,12 @@ body {
 
 /* Loading and Animation */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -617,7 +621,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #667eea;
+  background: #d3d4d8;
   border-radius: 4px;
 }
 
@@ -630,13 +634,13 @@ body {
   margin-top: 2rem;
   padding: 2rem;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-  border: 2px solid #667eea;
+  border: 2px solid #969698;
   border-radius: 8px;
   animation: slideDown 0.5s ease-out;
 }
 
 .auto-summaries-section h3 {
-  color: #667eea;
+  color: #252628;
   margin-bottom: 0.5rem;
   font-size: 1.3rem;
 }
@@ -649,7 +653,7 @@ body {
 }
 
 .summary-card.auto-generated {
-  border: 2px solid #667eea;
+  border: 2px solid #acadb2;
   background: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
   transition: all 0.3s ease;
@@ -662,7 +666,7 @@ body {
   position: absolute;
   top: 0;
   right: 0;
-  background: #667eea;
+  background: #6c6d6f;
   color: white;
   padding: 0.25rem 0.75rem;
   font-size: 0.7rem;
@@ -671,8 +675,8 @@ body {
 }
 
 .summary-card.auto-generated h4 {
-  color: #667eea;
-  border-bottom: 2px solid #667eea;
+  color: #acaeb5;
+  border-bottom: 2px solid #6c6c6f;
   padding-bottom: 0.75rem;
   margin-top: 1.5rem;
 }
@@ -701,6 +705,7 @@ body {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -713,12 +718,12 @@ body {
     padding: 1.5rem;
     margin-top: 1rem;
   }
-  
+
   .summary-card.auto-generated::before {
     padding: 0.2rem 0.5rem;
     font-size: 0.65rem;
   }
-  
+
   .summary-card.auto-generated h4 {
     margin-top: 1rem;
   }

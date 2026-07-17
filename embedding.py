@@ -1,8 +1,3 @@
-"""
-Embedding module for text vectorization and similarity search
-Uses Gemini embeddings with FAISS indexing
-"""
-
 import numpy as np
 import faiss
 import google.generativeai as genai
@@ -14,10 +9,8 @@ from config import config
 
 
 class EmbeddingManager:
-    """Manages text embeddings and vector indexing"""
     
     def __init__(self):
-        """Initialize embedding manager"""
         self.dimension = config.FAISS_INDEX_DIMENSION
         self.index = None
         self.documents = []
@@ -29,16 +22,7 @@ class EmbeddingManager:
         text: str, 
         task_type: str = "retrieval_document"
     ) -> List[float]:
-        """
-        Embed text using Gemini embeddings API
-        
-        Args:
-            text: Text to embed
-            task_type: Type of embedding task
-            
-        Returns:
-            Embedding vector
-        """
+
         try:
             result = genai.embed_content(
                 model=config.GEMINI_EMBED_MODEL,
@@ -55,16 +39,7 @@ class EmbeddingManager:
         texts: List[str], 
         task_type: str = "retrieval_document"
     ) -> List[List[float]]:
-        """
-        Embed multiple texts
-        
-        Args:
-            texts: List of texts to embed
-            task_type: Type of embedding task
-            
-        Returns:
-            List of embedding vectors
-        """
+
         embeddings = []
         for i, text in enumerate(texts):
             try:
@@ -80,7 +55,6 @@ class EmbeddingManager:
         return embeddings
     
     def create_index(self):
-        """Create FAISS index"""
         self.index = faiss.IndexFlatL2(self.dimension)
     
     def add_documents(
@@ -88,16 +62,7 @@ class EmbeddingManager:
         texts: List[str], 
         metadata: Optional[List[Dict]] = None
     ) -> int:
-        """
-        Add documents to the index
-        
-        Args:
-            texts: List of document texts
-            metadata: Optional metadata for each document
-            
-        Returns:
-            Number of documents added
-        """
+
         if not self.index:
             self.create_index()
         
@@ -126,16 +91,7 @@ class EmbeddingManager:
         query: str, 
         k: int = config.RETRIEVAL_TOP_K
     ) -> List[Tuple[int, float, str]]:
-        """
-        Search for similar documents
-        
-        Args:
-            query: Query text
-            k: Number of results to return
-            
-        Returns:
-            List of (doc_id, distance, text) tuples
-        """
+
         if not self.index or len(self.document_texts) == 0:
             return []
         
@@ -166,7 +122,6 @@ class EmbeddingManager:
             return []
     
     def save_index(self, path: str = config.FAISS_INDEX_PATH):
-        """Save index to disk"""
         try:
             if self.index:
                 faiss.write_index(self.index, f"{path}.idx")
@@ -183,7 +138,6 @@ class EmbeddingManager:
             print(f"Error saving index: {e}")
     
     def load_or_create_index(self, path: str = config.FAISS_INDEX_PATH):
-        """Load index from disk or create new one"""
         try:
             if os.path.exists(f"{path}.idx") and os.path.exists(f"{path}_docs.pkl"):
                 self.index = faiss.read_index(f"{path}.idx")
@@ -202,13 +156,13 @@ class EmbeddingManager:
             self.create_index()
     
     def clear_index(self):
-        """Clear all data from index"""
+
         self.create_index()
         self.documents = []
         self.document_texts = []
     
     def get_index_stats(self) -> Dict:
-        """Get index statistics"""
+
         return {
             "num_documents": len(self.document_texts),
             "dimension": self.dimension,

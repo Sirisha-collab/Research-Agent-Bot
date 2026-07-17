@@ -12,9 +12,9 @@ const apiCall = async (endpoint, method = 'GET', data = null, isFile = false) =>
       url: `${API_BASE_URL}${endpoint}`,
       headers: isFile ? {} : { 'Content-Type': 'application/json' }
     };
-    
+
     if (data) config.data = data;
-    
+
     const response = await axios(config);
     return response.data;
   } catch (error) {
@@ -29,41 +29,42 @@ const ResearchAssistantUI = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  
+
   // Query state
   const [query, setQuery] = useState('');
   const [queryResults, setQueryResults] = useState(null);
-  
+
   // Summary state
   const [summaryText, setSummaryText] = useState('');
   const [summaries, setSummaries] = useState({});
   const [selectedExpertiseLevel, setSelectedExpertiseLevel] = useState('intermediate');
-  
+
   // Questions state
   const [questionsText, setQuestionsText] = useState('');
   const [questions, setQuestions] = useState({});
   const [numQuestions, setNumQuestions] = useState(5);
-  
+  const [pdfFile, setPdfFile] = useState(null);
+
   // Metrics state
   const [indexStats, setIndexStats] = useState(null);
   const [relevantDocIds, setRelevantDocIds] = useState('');
   const [evaluationResults, setEvaluationResults] = useState(null);
-  
+
   // Auto-summaries state
   const [lastUploadSummaries, setLastUploadSummaries] = useState(null);
-  
+
   // Initialize
   useEffect(() => {
     loadDocuments();
   }, []);
-  
+
   // Load documents
   const loadDocuments = async () => {
     try {
       setLoading(true);
       const data = await apiCall('/documents');
       setDocuments(data.documents || []);
-      
+
       // Also load index stats
       const stats = await apiCall('/index/stats');
       setIndexStats(stats.stats);
@@ -73,20 +74,20 @@ const ResearchAssistantUI = () => {
       setLoading(false);
     }
   };
-  
+
   // Handle file upload
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     try {
       setLoading(true);
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await axios.post(`${API_BASE_URL}/documents/upload`, formData);
       setSuccess(`Document uploaded: ${response.data.message}`);
-      
+
       // Capture auto-generated summaries
       if (response.data.auto_summaries && response.data.auto_summaries.summaries) {
         setLastUploadSummaries({
@@ -95,7 +96,7 @@ const ResearchAssistantUI = () => {
           timestamp: new Date().toLocaleTimeString()
         });
       }
-      
+
       await loadDocuments();
     } catch (err) {
       setError(err.response?.data?.detail || 'Upload failed');
@@ -104,7 +105,7 @@ const ResearchAssistantUI = () => {
       setLoading(false);
     }
   };
-  
+
   // Handle query
   const handleQuery = async (e) => {
     e.preventDefault();
@@ -112,7 +113,7 @@ const ResearchAssistantUI = () => {
       setError('Please enter a query');
       return;
     }
-    
+
     try {
       setLoading(true);
       const data = await apiCall('/query', 'POST', {
@@ -128,7 +129,7 @@ const ResearchAssistantUI = () => {
       setLoading(false);
     }
   };
-  
+
   // Handle summary generation
   const handleGenerateSummary = async (e) => {
     e.preventDefault();
@@ -136,7 +137,7 @@ const ResearchAssistantUI = () => {
       setError('Please enter text to summarize');
       return;
     }
-    
+
     try {
       setLoading(true);
       const data = await apiCall('/summaries/multi-level', 'POST', {
@@ -150,30 +151,29 @@ const ResearchAssistantUI = () => {
       setLoading(false);
     }
   };
-  
+
   // Handle questions generation
   const handleGenerateQuestions = async (e) => {
     e.preventDefault();
-    if (!questionsText.trim()) {
-      setError('Please enter text to generate questions from');
-      return;
-    }
-    
+
     try {
       setLoading(true);
+
       const data = await apiCall('/questions/generate', 'POST', {
-        text: questionsText,
+        pdf_path: "uploads/testing.pdf",
         num_questions: numQuestions
       });
+
       setQuestions(data.questions || {});
       setError(null);
+
     } catch (err) {
       setError('Question generation failed');
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Handle evaluation
   const handleEvaluate = async (e) => {
     e.preventDefault();
@@ -181,7 +181,7 @@ const ResearchAssistantUI = () => {
       setError('Please enter document IDs');
       return;
     }
-    
+
     try {
       setLoading(true);
       const docIds = relevantDocIds.split(',').map(id => parseInt(id.trim()));
@@ -196,7 +196,7 @@ const ResearchAssistantUI = () => {
       setLoading(false);
     }
   };
-  
+
   // Clear all documents
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to clear all documents?')) {
@@ -212,12 +212,12 @@ const ResearchAssistantUI = () => {
       }
     }
   };
-  
+
   // Dashboard Tab
   const DashboardTab = () => (
     <div className="tab-content">
       <h2>Dashboard</h2>
-      
+
       <div className="stats-grid">
         {indexStats && (
           <>
@@ -240,7 +240,7 @@ const ResearchAssistantUI = () => {
           </>
         )}
       </div>
-      
+
       <div className="documents-section">
         <h3>Documents</h3>
         {documents.length > 0 ? (
@@ -266,12 +266,12 @@ const ResearchAssistantUI = () => {
       </div>
     </div>
   );
-  
+
   // Query Tab
   const QueryTab = () => (
     <div className="tab-content">
       <h2>Query Assistant</h2>
-      
+
       <form onSubmit={handleQuery} className="form">
         <div className="form-group">
           <label>Query:</label>
@@ -282,7 +282,7 @@ const ResearchAssistantUI = () => {
             rows="4"
           />
         </div>
-        
+
         <div className="form-group">
           <label>Expertise Level:</label>
           <select value={selectedExpertiseLevel} onChange={(e) => setSelectedExpertiseLevel(e.target.value)}>
@@ -291,12 +291,12 @@ const ResearchAssistantUI = () => {
             <option value="expert">Expert</option>
           </select>
         </div>
-        
+
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? 'Processing...' : 'Query'}
         </button>
       </form>
-      
+
       {queryResults && (
         <div className="results-section">
           <h3>Results</h3>
@@ -304,14 +304,14 @@ const ResearchAssistantUI = () => {
             <h4>Response:</h4>
             <p>{queryResults.response}</p>
           </div>
-          
+
           {queryResults.summary && (
             <div className="query-summary">
               <h4>Summary ({queryResults.expertise_level}):</h4>
               <p>{queryResults.summary}</p>
             </div>
           )}
-          
+
           {queryResults.results && queryResults.results.length > 0 && (
             <div className="retrieved-docs">
               <h4>Retrieved Documents ({queryResults.retrieved_count}):</h4>
@@ -327,12 +327,12 @@ const ResearchAssistantUI = () => {
       )}
     </div>
   );
-  
+
   // Summary Tab
   const SummaryTab = () => (
     <div className="tab-content">
       <h2>Summary Generation</h2>
-      
+
       <form onSubmit={handleGenerateSummary} className="form">
         <div className="form-group">
           <label>Text to Summarize:</label>
@@ -343,12 +343,12 @@ const ResearchAssistantUI = () => {
             rows="6"
           />
         </div>
-        
+
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? 'Generating...' : 'Generate Summaries'}
         </button>
       </form>
-      
+
       {Object.keys(summaries).length > 0 && (
         <div className="results-section">
           <h3>Summaries</h3>
@@ -372,23 +372,14 @@ const ResearchAssistantUI = () => {
       )}
     </div>
   );
-  
+
   // Questions Tab
   const QuestionsTab = () => (
     <div className="tab-content">
       <h2>Research Questions</h2>
-      
+
       <form onSubmit={handleGenerateQuestions} className="form">
-        <div className="form-group">
-          <label>Text to Analyze:</label>
-          <textarea
-            value={questionsText}
-            onChange={(e) => setQuestionsText(e.target.value)}
-            placeholder="Paste the document text..."
-            rows="6"
-          />
-        </div>
-        
+
         <div className="form-group">
           <label>Number of Questions per Category:</label>
           <input
@@ -399,12 +390,12 @@ const ResearchAssistantUI = () => {
             max="10"
           />
         </div>
-        
+
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? 'Generating...' : 'Generate Questions'}
         </button>
       </form>
-      
+
       {Object.keys(questions).length > 0 && (
         <div className="results-section">
           <h3>Generated Questions</h3>
@@ -424,12 +415,12 @@ const ResearchAssistantUI = () => {
       )}
     </div>
   );
-  
+
   // Metrics Tab
   const MetricsTab = () => (
     <div className="tab-content">
       <h2>Retrieval Evaluation</h2>
-      
+
       <form onSubmit={handleEvaluate} className="form">
         <div className="form-group">
           <label>Relevant Document IDs (comma-separated):</label>
@@ -440,12 +431,12 @@ const ResearchAssistantUI = () => {
             placeholder="e.g., 0, 1, 3, 5"
           />
         </div>
-        
+
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? 'Evaluating...' : 'Evaluate'}
         </button>
       </form>
-      
+
       {evaluationResults && (
         <div className="results-section">
           <h3>Evaluation Results</h3>
@@ -463,12 +454,12 @@ const ResearchAssistantUI = () => {
       )}
     </div>
   );
-  
+
   // Upload Tab
   const UploadTab = () => (
     <div className="tab-content">
       <h2>Document Management</h2>
-      
+
       <div className="upload-section">
         <div className="upload-area">
           <input
@@ -482,18 +473,18 @@ const ResearchAssistantUI = () => {
             {loading ? 'Uploading and generating summaries...' : 'Click to upload PDF'}
           </label>
         </div>
-        
+
         <button onClick={handleClearAll} className="btn btn-danger" disabled={loading || documents.length === 0}>
           Clear All Documents
         </button>
       </div>
-      
+
       {/* Display auto-generated summaries */}
       {lastUploadSummaries && (
         <div className="auto-summaries-section">
-          <h3>✨ Auto-Generated Summaries - {lastUploadSummaries.filename}</h3>
+          <h3>Auto-Generated Summaries - {lastUploadSummaries.filename}</h3>
           <p className="timestamp">Generated at: {lastUploadSummaries.timestamp}</p>
-          
+
           <div className="summaries-grid">
             {Object.entries(lastUploadSummaries.summaries).map(([level, data]) => (
               <div key={level} className="summary-card auto-generated">
@@ -502,16 +493,16 @@ const ResearchAssistantUI = () => {
                   <p>{data.text}</p>
                 </div>
                 <div className="validation-info">
-                  <p><strong>Quality Score:</strong> <span style={{color: data.quality_score > 0.7 ? '#4CAF50' : '#FF9800'}}>{(data.quality_score * 100).toFixed(1)}%</span></p>
+                  <p><strong>Quality Score:</strong> <span style={{ color: data.quality_score > 0.7 ? '#4CAF50' : '#FF9800' }}>{(data.quality_score * 100).toFixed(1)}%</span></p>
                   <p><strong>Word Count:</strong> {data.word_count}</p>
-                  <p><strong>Status:</strong> <span style={{fontWeight: 'bold', color: data.status === 'pass' ? '#4CAF50' : '#FF9800'}}>{data.status}</span></p>
+                  <p><strong>Status:</strong> <span style={{ fontWeight: 'bold', color: data.status === 'pass' ? '#4CAF50' : '#FF9800' }}>{data.status}</span></p>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-      
+
       {documents.length > 0 && (
         <div className="documents-list">
           <h3>Uploaded Documents ({documents.length})</h3>
@@ -525,17 +516,17 @@ const ResearchAssistantUI = () => {
       )}
     </div>
   );
-  
+
   return (
     <div className="research-assistant-container">
       <header className="header">
-        <h1>🔬 Research Assistant Bot</h1>
-        <p>AI-powered research with retrieval, summarization, and question generation</p>
+        <h1> Research Assistant Bot</h1>
+        <p>Research with retrieval, summarization, and question generation</p>
       </header>
-      
+
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
-      
+
       <nav className="tabs">
         <button
           className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -574,7 +565,7 @@ const ResearchAssistantUI = () => {
           Metrics
         </button>
       </nav>
-      
+
       <main className="main-content">
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'upload' && <UploadTab />}
