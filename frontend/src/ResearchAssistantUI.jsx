@@ -130,28 +130,6 @@ const ResearchAssistantUI = () => {
     }
   };
 
-  // Handle summary generation
-  const handleGenerateSummary = async (e) => {
-    e.preventDefault();
-    if (!summaryText.trim()) {
-      setError('Please enter text to summarize');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await apiCall('/summaries/multi-level', 'POST', {
-        text: summaryText
-      });
-      setSummaries(data.summaries || {});
-      setError(null);
-    } catch (err) {
-      setError('Summary generation failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Handle questions generation
   const handleGenerateQuestions = async (e) => {
     e.preventDefault();
@@ -323,51 +301,6 @@ const ResearchAssistantUI = () => {
               ))}
             </div>
           )}
-        </div>
-      )}
-    </div>
-  );
-
-  // Summary Tab
-  const SummaryTab = () => (
-    <div className="tab-content">
-      <h2>Summary Generation</h2>
-
-      <form onSubmit={handleGenerateSummary} className="form">
-        <div className="form-group">
-          <label>Text to Summarize:</label>
-          <textarea
-            value={summaryText}
-            onChange={(e) => setSummaryText(e.target.value)}
-            placeholder="Paste the text you want to summarize..."
-            rows="6"
-          />
-        </div>
-
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? 'Generating...' : 'Generate Summaries'}
-        </button>
-      </form>
-
-      {Object.keys(summaries).length > 0 && (
-        <div className="results-section">
-          <h3>Summaries</h3>
-          <div className="summaries-grid">
-            {Object.entries(summaries).map(([level, data]) => (
-              <div key={level} className="summary-card">
-                <h4>{level.charAt(0).toUpperCase() + level.slice(1)}</h4>
-                <div className="summary-content">
-                  <p>{data.summary}</p>
-                </div>
-                {data.validation && (
-                  <div className="validation-info">
-                    <p><strong>Quality Score:</strong> {(data.validation.quality_score * 100).toFixed(1)}%</p>
-                    <p><strong>Words:</strong> {data.validation.word_count}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
@@ -547,12 +480,6 @@ const ResearchAssistantUI = () => {
           Query
         </button>
         <button
-          className={`tab-button ${activeTab === 'summary' ? 'active' : ''}`}
-          onClick={() => setActiveTab('summary')}
-        >
-          Summary
-        </button>
-        <button
           className={`tab-button ${activeTab === 'questions' ? 'active' : ''}`}
           onClick={() => setActiveTab('questions')}
         >
@@ -570,7 +497,6 @@ const ResearchAssistantUI = () => {
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'upload' && <UploadTab />}
         {activeTab === 'query' && <QueryTab />}
-        {activeTab === 'summary' && <SummaryTab />}
         {activeTab === 'questions' && <QuestionsTab />}
         {activeTab === 'metrics' && <MetricsTab />}
       </main>

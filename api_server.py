@@ -249,28 +249,6 @@ async def generate_summary(request: SummaryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/summaries/multi-level")
-async def generate_multi_level_summaries(text: str):
-    try:
-        summaries = SummaryGenerator.generate_multiple_summaries(text)
-        
-        result = {}
-        for level, summary in summaries.items():
-            validation = SummaryValidator.validate_quality(summary)
-            result[level] = {
-                "summary": summary,
-                "validation": validation
-            }
-        
-        return {
-            "status": "success",
-            "summaries": result
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ==================== Research Questions ====================
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
@@ -400,10 +378,6 @@ async def root():
             "retrieval": {
                 "query": "POST /query",
                 "retrieve": "GET /retrieve"
-            },
-            "summaries": {
-                "generate": "POST /summaries/generate",
-                "multi_level": "POST /summaries/multi-level"
             },
             "questions": {
                 "generate": "POST /questions/generate"
