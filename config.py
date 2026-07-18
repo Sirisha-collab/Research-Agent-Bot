@@ -14,6 +14,28 @@ class Config:
     
     # API Keys
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+    DEFAULT_SUMMARY_ENGINE = os.getenv("DEFAULT_SUMMARY_ENGINE", "deepseek")
+
+    # ------------------------------------------------------------------
+    # NEW - Summary styles exposed to the UI
+    # ------------------------------------------------------------------
+    SUMMARY_STYLES = {
+        "bullet_points": "Bullet Points",
+        "executive_summary": "Executive Summary",
+        "key_takeaways": "Key Takeaways",
+        "technical_analysis": "Technical Analysis",
+        "action_items": "Action Items",
+    }
+    DEFAULT_SUMMARY_STYLE = "bullet_points"
+
+    # Safety cap on how much document text is sent per summarization call,
+    # to stay comfortably within free-tier token/context limits.
+    SUMMARY_MAX_INPUT_CHARS = int(os.getenv("SUMMARY_MAX_INPUT_CHARS", "20000"))
     
     # FAISS Configuration
     FAISS_INDEX_DIMENSION = 768  # Embedding dimension for Gemini
@@ -48,6 +70,8 @@ class Config:
 
         if not cls.GEMINI_API_KEY:
             return False, "GEMINI_API_KEY not set. Please set it in .env file"
+        if not cls.DEEPSEEK_API_KEY:
+            return False, "DEEPSEEK_API_KEY not set. Please set it in .env file"
         return True, None
     
     @classmethod
