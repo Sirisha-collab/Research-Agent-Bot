@@ -1,0 +1,27 @@
+# --- core
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+python-dotenv==1.0.1
+requests==2.32.3
+
+# --- pdf extraction
+PyMuPDF==1.25.1
+camelot-py==0.11.0
+opencv-python-headless==4.10.0.84
+pandas==2.2.3
+pypdf==5.1.0
+
+# --- retrieval
+faiss-cpu==1.9.0.post1
+sentence-transformers==3.3.1
+numpy==1.26.4
+
+# --- orchestration + llm
+langgraph==0.2.60
+langchain-core==0.3.28
+openai==1.59.3
+
+# --- ui
+gradio==5.9.1
