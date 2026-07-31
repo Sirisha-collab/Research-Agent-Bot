@@ -1,4 +1,3 @@
-"""Central configuration. Everything tunable lives here or in .env."""
 from __future__ import annotations
 
 import os

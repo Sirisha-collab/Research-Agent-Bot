@@ -1,5 +1,3 @@
-"""FastAPI service. Everything the Gradio UI does goes through these endpoints,
-so the same backend can serve a CLI, a notebook, or another frontend."""
 from __future__ import annotations
 
 import logging
@@ -9,7 +7,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from backend import config
+from . import config
 from backend.core import pipeline
 from backend.core.llm import LLMError
 from backend.core.vectorstore import get_store
