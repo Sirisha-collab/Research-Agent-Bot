@@ -7,3 +7,5 @@ data/index/*
 data/extracted/*
 data/reports/*
 !data/**/.gitkeep
+frontend/node_modules/
+frontend/.env

@@ -1,9 +1,4 @@
-"""Start the API and the UI with one command:  python run.py
-
-Runs uvicorn in a background thread, waits for /health, then launches Gradio.
-Prefer two terminals (see README) while developing - you get cleaner logs and
-auto-reload on the API.
-"""
+"""Start the API and the UI with one command:  python run.py"""
 from __future__ import annotations
 
 import os
@@ -14,10 +9,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import requests  # noqa: E402
-import uvicorn  # noqa: E402
+import requests  
+import uvicorn  
 
-from backend import config  # noqa: E402
+from backend import config  
 
 
 def _serve_api() -> None:
@@ -55,13 +50,9 @@ def main() -> None:
         sys.exit(1)
     print("→ API ready. Loading the embedding model, then the UI…")
 
-    from frontend.app import build_ui
+    from frontend.app import launch_ui
 
-    build_ui().launch(
-        server_port=config.GRADIO_PORT,
-        share=config.GRADIO_SHARE,
-        inbrowser=True,
-    )
+    launch_ui(inbrowser=True)
 
 
 if __name__ == "__main__":

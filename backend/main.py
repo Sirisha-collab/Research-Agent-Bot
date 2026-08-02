@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
-from . import config
+from backend import config
 from backend.core import pipeline
 from backend.core.llm import LLMError
+from backend.core.report import build_markdown, safe_filename
 from backend.core.vectorstore import get_store
 from backend.schemas import (
     AskRequest,
@@ -29,13 +32,15 @@ log = logging.getLogger("research-assistant")
 app = FastAPI(
     title="Research-Assistant-Bot API",
     description="Upload papers, index them, ask questions, get plain-English explanations.",
-    version="1.0.0",
+    version="2.0.0",
 )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -73,7 +78,7 @@ async def ingest(file: UploadFile = File(...), understand: bool = True) -> Inges
         result = pipeline.ingest_pdf(path, doc_id, run_understanding=understand)
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.exception("Ingest failed")
         raise HTTPException(500, f"Could not process that PDF: {exc}") from exc
     return IngestResponse(**{k: v for k, v in result.items() if k in IngestResponse.model_fields})
@@ -119,6 +124,25 @@ def figure(doc_id: str, figure_id: str) -> FileResponse:
     return FileResponse(path, media_type="image/png")
 
 
+@app.get("/documents/{doc_id}/report")
+def report(doc_id: str, format: str = Query("md", pattern="^(md|json)$")) -> Response:
+    doc = pipeline.load_artifact(doc_id, "document.json")
+    if doc is None:
+        raise HTTPException(404, "Unknown document id.")
+    title = doc.get("title", "paper")
+    if format == "json":
+        body = json.dumps(doc, ensure_ascii=False, indent=2)
+        media, name = "application/json", safe_filename(title, doc_id, "json")
+    else:
+        body = build_markdown(doc)
+        media, name = "text/markdown; charset=utf-8", safe_filename(title, doc_id, "md")
+    return Response(
+        content=body,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
 @app.delete("/documents/{doc_id}")
 def delete_document(doc_id: str) -> dict:
     get_store().delete_document(doc_id)
@@ -129,6 +153,11 @@ def delete_document(doc_id: str) -> dict:
 def reset() -> dict:
     get_store().reset()
     return {"status": "index cleared"}
+
+
+_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
+if _DIST.exists():
+    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="web")
 
 
 def run() -> None:
