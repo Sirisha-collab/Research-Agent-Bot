@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f5f4f0;
+  --color-surface: #fdfdfc;
+  --color-ink: #16171b;
+  --color-muted: #6b7078;
+  --color-rule: #e0ded7;
+  --color-accent: #0e6f66;
+  --color-accent-soft: #e4efed;
+  --color-warn: #9a5b18;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.md {
+  font-size: 1.02rem;
+  line-height: 1.68;
+}
+
+.md p {
+  margin-bottom: 0.9rem;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 1.6rem 0 0.6rem;
+}
+
+.md h1:first-child,
+.md h2:first-child,
+.md h3:first-child {
+  margin-top: 0;
+}
+
+.md ul,
+.md ol {
+  margin: 0 0 1rem 1.1rem;
+  list-style: disc;
+}
+
+.md ol {
+  list-style: decimal;
+}
+
+.md li {
+  margin-bottom: 0.35rem;
+}
+
+.md strong {
+  font-weight: 600;
+}
+
+.md blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 0.85rem;
+  color: var(--color-muted);
+  margin: 0.6rem 0 1rem;
+}
+
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--color-accent-soft);
+  padding: 0.1em 0.35em;
+}
+
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.4rem 0 1.4rem;
+  font-size: 0.9rem;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--color-rule);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md th {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--color-paper);
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.md a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-rule);
+}
+
+@keyframes pulse-rule {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.working {
+  animation: pulse-rule 1.4s ease-in-out infinite;
+}
