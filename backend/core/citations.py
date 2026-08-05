@@ -4,8 +4,9 @@ import re
 from typing import Any
 
 STOPWORDS = {
-    "a", "an", "the", "on", "of", "for", "and", "in", "with", "to", "from",
-    "using", "via", "towards", "toward", "based", "by", "at",
+    "a", "an", "the", "on", "of", "for", "and", "in",
+    "with", "to", "from", "using", "via", "towards",
+    "toward", "based", "by", "at",
 }
 
 LATEX_ESCAPES = {
@@ -18,8 +19,8 @@ LATEX_ESCAPES = {
     "}": r"\}",
     "~": r"\textasciitilde{}",
     "^": r"\textasciicircum{}",
+    "\\": r"\textbackslash{}",
 }
-
 
 def _escape(text: str) -> str:
     text = (text or "").replace("\\", r"\textbackslash{}")
