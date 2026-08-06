@@ -1,8 +1,7 @@
 # Research-Assistant-Bot
 
 Upload a research paper, get a plain-English explanation of what it found, then ask the
-paper questions and get answers with page-level citations. Papers stay in a local library,
-so you can search across everything you've ever uploaded.
+paper questions and get answers with page-level citations.
 
 ```
 PDF ──► PyMuPDF + rules ──► sections, figures ─┐
@@ -34,27 +33,11 @@ PDF ──► PyMuPDF + rules ──► sections, figures ─┐
 | **Ghostscript** | Camelot's `lattice` mode (ruled tables) | Optional. Without it you still get `stream` tables |
 | **Groq API key** | the LLM | Free: https://console.groq.com/keys |
 
-Installing Ghostscript:
-
-- **Windows** — download the installer from https://ghostscript.com/releases/gsdnld.html, then reopen your terminal.
-- **macOS** — `brew install ghostscript`
-- **Linux** — `sudo apt install ghostscript python3-tk`
-
 ---
 
 ## 2. Set up in VS Code (step by step)
 
-**Step 1 — open the project**
-
-Unzip `research-assistant-bot.zip`, then in VS Code: `File → Open Folder…` → select the
-`research-assistant-bot` folder.
-
-**Step 2 — open a terminal inside VS Code**
-
-`` Ctrl+` `` (backtick), or `Terminal → New Terminal`. The prompt should already be in the
-project folder.
-
-**Step 3 — create a virtual environment**
+**Step 1 — create a virtual environment**
 
 ```bash
 # Windows (PowerShell)
@@ -66,24 +49,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-If PowerShell blocks activation, run once:
-`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
-
-**Step 4 — point VS Code at the environment**
-
-`Ctrl+Shift+P` → *Python: Select Interpreter* → pick the one with `.venv` in the path.
-
-**Step 5 — install dependencies**
+**Step 2 — install dependencies**
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-This pulls PyTorch as a dependency of sentence-transformers, so it's a ~2GB download the
-first time. Grab a coffee.
-
-**Step 6 — add your API key**
+**Step 3 — add your API key**
 
 ```bash
 # Windows
@@ -99,20 +72,13 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_your_key_here
 ```
 
-For DeepSeek instead: set `LLM_PROVIDER=deepseek` and fill `DEEPSEEK_API_KEY`.
-
-**Step 7 — run it**
+**Step 4 — run it**
 
 The simple way, one terminal:
 
 ```bash
 python run.py
 ```
-
-It starts the API on `http://127.0.0.1:8000`, waits for it, then opens the UI at
-`http://127.0.0.1:7860`.
-
-The developer way, two terminals (better logs, API auto-reloads on save):
 
 ```bash
 # terminal 1
@@ -121,19 +87,6 @@ uvicorn backend.main:app --reload --port 8000
 # terminal 2  (activate .venv here too)
 python frontend/app.py
 ```
-
-**Step 8 — use it**
-
-1. Drop a PDF into the upload box.
-2. Click **Read this paper**. First run also downloads the embedding model (~130MB).
-3. Read the **Explanation** tab, then the **Findings** tab.
-4. Go to **Ask** and ask something specific: *"what baseline did they compare against?"*
-5. Download the generated report from the **Download report** box.
-
-Expected timing on a normal laptop, 12-page paper: 10–25s for extraction and indexing,
-30–70s more if summarisation is on (that part is LLM-bound).
-
----
 
 ## 3. What each file does
 
