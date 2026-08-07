@@ -18,6 +18,8 @@ class Source(BaseModel):
     page: int
     score: float
     snippet: str
+    full_text: str = ""
+    kind: str = "text"
 
 
 class AskResponse(BaseModel):
@@ -26,6 +28,8 @@ class AskResponse(BaseModel):
     sources: list[Source] = []
     queries_used: list[str] = []
     retrieval_rounds: int = 1
+    llm_calls: int = 0
+    cached: bool = False
 
 
 class DocumentSummary(BaseModel):
@@ -54,6 +58,7 @@ class IngestResponse(BaseModel):
     figures: list[dict[str, Any]] = []
     sections: list[dict[str, Any]] = []
     warnings: list[str] = []
+    llm_calls: int = 0
     elapsed_s: float = 0.0
 
 

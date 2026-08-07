@@ -1,4 +1,3 @@
-"""Prompt templates. Keeping them together makes tuning a one-file job."""
 
 PLAIN_ENGLISH_RULES = (
     "Write for a smart person who is NOT in this field. "
@@ -129,3 +128,37 @@ Return JSON: {{"questions": ["...", "...", "...", "..."]}}
 
 Summary:
 {summary}"""
+
+
+SYNTHESIS = """You are given notes from one research paper. Produce every part of the
+analysis in a single JSON object.
+
+{rules}
+
+Return JSON with exactly these keys:
+
+{{"summary": "180-260 words of connected prose covering the problem, what the authors did,
+              what they found, and what it means. No headings, no bullets, no preamble.",
+  "explanation": "markdown using exactly these four headings in this order:
+                  '### The problem' (2-3 sentences on what was broken or unknown),
+                  '### What they did' (3-4 sentences, everyday language, one analogy if it fits),
+                  '### What they found' (3-4 sentences with the key numbers),
+                  '### Why it matters' (2-3 sentences on who should care)",
+  "findings": {{"findings": [{{"finding": "one sentence, plain English, include the number if there is one",
+                              "evidence": "the phrase from the notes that supports it",
+                              "section": "results | method | discussion | conclusion | abstract"}}],
+                "contributions": ["short phrase"],
+                "limitations": ["short phrase"],
+                "future_work": ["short phrase"],
+                "methods": ["dataset / model / technique names actually used"],
+                "metrics": [{{"name": "e.g. accuracy", "value": "e.g. 91.4%",
+                              "context": "on which dataset or baseline"}}]}},
+  "followups": ["4 short questions a reader would ask next, answerable from this paper"]}}
+
+Rules: 3-7 findings. Only what the notes support. Empty list where a category is absent.
+Never invent a number, a citation, or an author claim.
+
+Paper title: {title}
+Notes:
+{notes}
+"""

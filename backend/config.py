@@ -17,7 +17,6 @@ for _d in (UPLOAD_DIR, INDEX_DIR, EXTRACT_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------- llm
-# provider: "groq" (free tier) or "deepseek". Both speak the OpenAI wire format.
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 
 _PROVIDERS = {
@@ -47,7 +46,7 @@ LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "90"))
 # ---------------------------------------------------------------- embeddings
 EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
 EMBED_BATCH = int(os.getenv("EMBED_BATCH", "32"))
-# bge models want this prefix on the *query* side only.
+
 EMBED_QUERY_PREFIX = os.getenv(
     "EMBED_QUERY_PREFIX", "Represent this sentence for searching relevant passages: "
 )
@@ -72,6 +71,19 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 API_URL = os.getenv("API_URL", f"http://{API_HOST}:{API_PORT}")
 GRADIO_PORT = int(os.getenv("GRADIO_PORT", "7860"))
 GRADIO_SHARE = os.getenv("GRADIO_SHARE", "false").lower() == "true"
+
+# ---------------------------------------------------------------- llm budget
+# Below this word count the whole paper fits in one prompt, so the per-section
+# map step is skipped entirely (16 calls -> 1).
+MAP_REDUCE_THRESHOLD = int(os.getenv("MAP_REDUCE_THRESHOLD", "18000"))
+SYNTHESIS_MAX_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "2600"))
+LLM_QUERY_PLANNING = os.getenv("LLM_QUERY_PLANNING", "true").lower() == "true"
+LLM_CONTEXT_GRADING = os.getenv("LLM_CONTEXT_GRADING", "true").lower() == "true"
+GRADE_TOP_SCORE = float(os.getenv("GRADE_TOP_SCORE", "0.55"))
+GRADE_STRONG_SCORE = float(os.getenv("GRADE_STRONG_SCORE", "0.45"))
+# Reuse the stored analysis when the same PDF bytes are uploaded again.
+DEDUPE_UPLOADS = os.getenv("DEDUPE_UPLOADS", "true").lower() == "true"
+ANSWER_CACHE_SIZE = int(os.getenv("ANSWER_CACHE_SIZE", "64"))
 
 
 def missing_api_key() -> bool:

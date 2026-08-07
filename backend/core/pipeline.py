@@ -1,15 +1,17 @@
-"""End-to-end ingestion: PDF in, indexed + understood document out."""
+# PDF in, indexed + understood document out.
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.config import EXTRACT_DIR, UPLOAD_DIR
+from backend.config import ANSWER_CACHE_SIZE, DEDUPE_UPLOADS, EXTRACT_DIR, UPLOAD_DIR
 from backend.core.chunking import chunk_document
 from backend.core.graph import qa_graph, understand_graph
 from backend.core.vectorstore import get_store
@@ -36,6 +38,23 @@ def load_artifact(doc_id: str, name: str, default: Any = None) -> Any:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def file_hash(file_bytes: bytes) -> str:
+    return hashlib.sha256(file_bytes).hexdigest()[:16]
+
+#Hashing
+def find_by_hash(digest: str) -> dict[str, Any] | None:
+
+    if not DEDUPE_UPLOADS:
+        return None
+    for doc in get_store().list_documents():
+        if doc.get("file_hash") == digest:
+            stored = load_artifact(doc["doc_id"], "document.json")
+            if stored:
+                log.info("Duplicate upload: reusing %s", doc["doc_id"])
+                return stored
+    return None
+
+
 def save_pdf(file_bytes: bytes, filename: str) -> tuple[str, Path]:
     doc_id = uuid.uuid4().hex[:12]
     safe = Path(filename).name.replace(" ", "_")
@@ -44,7 +63,8 @@ def save_pdf(file_bytes: bytes, filename: str) -> tuple[str, Path]:
     return doc_id, dest
 
 
-def ingest_pdf(pdf_path: str | Path, doc_id: str, run_understanding: bool = True) -> dict[str, Any]:
+def ingest_pdf(pdf_path: str | Path, doc_id: str, run_understanding: bool = True,
+               digest: str = "") -> dict[str, Any]:
     started = time.time()
     pdf_path = Path(pdf_path)
     out_dir = _doc_dir(doc_id)
@@ -81,11 +101,11 @@ def ingest_pdf(pdf_path: str | Path, doc_id: str, run_understanding: bool = True
         "n_tables": len(tables),
         "n_figures": len(parsed.figures),
         "pdf_path": str(pdf_path),
+        "file_hash": digest,
         "ingested_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     n_chunks = get_store().add_document(doc_meta, payload)
 
-    # 4. persist raw artifacts ----------------------------------------------
     (out_dir / "parsed.json").write_text(
         json.dumps(parsed.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -103,7 +123,7 @@ def ingest_pdf(pdf_path: str | Path, doc_id: str, run_understanding: bool = True
                      for s in parsed.sections],
     }
 
-    # 5. understand ----------------------------------------------------------
+   
     if run_understanding:
         understanding = run_understand(parsed.to_dict(), doc_id)
         result.update(understanding)
@@ -131,26 +151,48 @@ def run_understand(parsed_dict: dict[str, Any], doc_id: str) -> dict[str, Any]:
         "followups": state.get("followups", []),
         "section_notes": state.get("section_notes", []),
         "warnings": state.get("errors", []),
+        "llm_calls": state.get("llm_calls", 0),
     }
+    log.info("Understanding used %d LLM call(s)", out["llm_calls"])
     (_doc_dir(doc_id) / "understanding.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return out
 
 
+_answer_cache: "OrderedDict[tuple[str, tuple[str, ...]], dict[str, Any]]" = OrderedDict()
+
+
+def clear_answer_cache() -> None:
+    _answer_cache.clear()
+
+
 def ask(question: str, doc_ids: list[str] | None = None) -> dict[str, Any]:
+    key = (question.lower().strip(), tuple(sorted(doc_ids or [])))
+    if ANSWER_CACHE_SIZE > 0 and key in _answer_cache:
+        _answer_cache.move_to_end(key)
+        log.info("Answer cache hit")
+        return {**_answer_cache[key], "cached": True}
+
     state = qa_graph().invoke(
-        {"question": question, "doc_ids": doc_ids or [], "loops": 0}
+        {"question": question, "doc_ids": doc_ids or [], "loops": 0, "llm_calls": 0}
     )
-    return {
+    result = {
         "question": question,
         "answer": state.get("answer", ""),
         "sources": state.get("sources", []),
         "queries_used": state.get("queries", []),
         "retrieval_rounds": state.get("loops", 1),
+        "llm_calls": state.get("llm_calls", 0),
+        "cached": False,
     }
+    if ANSWER_CACHE_SIZE > 0 and result["sources"]:
+        _answer_cache[key] = result
+        while len(_answer_cache) > ANSWER_CACHE_SIZE:
+            _answer_cache.popitem(last=False)
+    return result
 
 
 def compare(question: str, doc_ids: list[str]) -> dict[str, Any]:
-    """Cross-document exploration: same question, whole library, one answer."""
+
     return ask(question, doc_ids=doc_ids)

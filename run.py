@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import requests  
 import uvicorn  
 
-from backend import config  
-
+from backend import config 
+from frontend.app import launch_ui 
 
 def _serve_api() -> None:
     uvicorn.run(
@@ -50,7 +50,7 @@ def main() -> None:
         sys.exit(1)
     print("→ API ready. Loading the embedding model, then the UI…")
 
-    from frontend.app import launch_ui
+    
 
     launch_ui(inbrowser=True)
 

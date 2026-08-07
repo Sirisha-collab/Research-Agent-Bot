@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from backend import config
 from backend.core import pipeline
 from backend.core.llm import LLMError
+from backend.core.citations import library_to_bibtex
 from backend.core.report import build_markdown, safe_filename
 from backend.core.vectorstore import get_store
 from backend.schemas import (
@@ -72,10 +73,17 @@ async def ingest(file: UploadFile = File(...), understand: bool = True) -> Inges
             "Add it to .env and restart the server.",
         )
 
+    digest = pipeline.file_hash(data)
+    existing = pipeline.find_by_hash(digest)
+    if existing is not None:
+        return IngestResponse(
+            **{k: v for k, v in existing.items() if k in IngestResponse.model_fields}
+        )
+
     doc_id, path = pipeline.save_pdf(data, file.filename)
     log.info("Ingesting %s as %s", file.filename, doc_id)
     try:
-        result = pipeline.ingest_pdf(path, doc_id, run_understanding=understand)
+        result = pipeline.ingest_pdf(path, doc_id, run_understanding=understand, digest=digest)
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
     except Exception as exc:
@@ -143,15 +151,36 @@ def report(doc_id: str, format: str = Query("md", pattern="^(md|json)$")) -> Res
     )
 
 
+@app.get("/library/bibtex")
+def library_bibtex(doc_ids: str = Query("")) -> Response:
+    store = get_store()
+    wanted = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    docs = []
+    for summary in store.list_documents():
+        if wanted and summary["doc_id"] not in wanted:
+            continue
+        full = pipeline.load_artifact(summary["doc_id"], "document.json") or summary
+        docs.append(full)
+    if not docs:
+        raise HTTPException(404, "No indexed documents to export.")
+    return Response(
+        content=library_to_bibtex(docs),
+        media_type="application/x-bibtex; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="library.bib"'},
+    )
+
+
 @app.delete("/documents/{doc_id}")
 def delete_document(doc_id: str) -> dict:
     get_store().delete_document(doc_id)
+    pipeline.clear_answer_cache()
     return {"deleted": doc_id}
 
 
 @app.post("/reset")
 def reset() -> dict:
     get_store().reset()
+    pipeline.clear_answer_cache()
     return {"status": "index cleared"}
 
 

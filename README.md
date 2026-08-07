@@ -85,7 +85,8 @@ python run.py
 uvicorn backend.main:app --reload --port 8000
 
 # terminal 2  (activate .venv here too)
-python frontend/app.py
+cd frontend
+npm run dev
 ```
 
 ## 3. What each file does
