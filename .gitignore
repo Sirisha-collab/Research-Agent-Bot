@@ -9,3 +9,5 @@ data/reports/*
 !data/**/.gitkeep
 frontend/node_modules/
 frontend/.env
+.env
+.env
