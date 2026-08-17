@@ -65,13 +65,6 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-Open `.env` and paste your key:
-
-```
-LLM_PROVIDER=groq
-GROQ_API_KEY=gsk_your_key_here
-```
-
 **Step 4 — run it**
 
 The simple way, one terminal:
@@ -138,22 +131,7 @@ excerpts actually answer the question; if not, it feeds back *what's missing* as
 query and searches wider, up to `MAX_RETRIEVAL_LOOPS`. `answer` writes the response with
 `[S1]`-style citations that map to the source slips under the chat.
 
-## 5. API
-
-Interactive docs while the server runs: http://127.0.0.1:8000/docs
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | provider, model, key status, index size |
-| `POST` | `/ingest` | multipart PDF upload → full analysis |
-| `POST` | `/ask` | `{"question": "...", "doc_ids": []}` |
-| `GET` | `/documents` | library listing |
-| `GET` | `/documents/{id}` | everything known about one paper |
-| `GET` | `/documents/{id}/tables` | extracted tables |
-| `DELETE` | `/documents/{id}` | remove one paper and reindex |
-| `POST` | `/reset` | wipe the index |
-
-## 6. Building a library from a folder
+## 5. Building a library from a folder
 
 ```bash
 python scripts/cli.py ingest ~/papers --no-understand   # fast, index only
@@ -161,25 +139,7 @@ python scripts/cli.py ask "which papers use contrastive learning, and how?"
 python scripts/cli.py list
 ```
 
-Leave the library checkboxes empty in the UI to search across everything, or tick two
-papers to compare them in one answer.
-
-## 7. Troubleshooting
-
-| Symptom | Fix |
-| --- | --- |
-| `No API key found for provider 'groq'` | `.env` missing or key blank. Restart after editing |
-| `Backend unreachable at http://127.0.0.1:8000` | API isn't running, or port 8000 is taken. Change `API_PORT` in `.env` |
-| No tables detected | Install Ghostscript, or the PDF's tables are images — try `ENABLE_CAMELOT=true` and check the API log |
-| `ModuleNotFoundError: backend` | Run commands from the project root, with `.venv` activated |
-| Camelot import error on `cv2` | `pip install opencv-python-headless` |
-| Rate limit / 429 from Groq | Free tier throttles. The client retries with backoff; for long papers set `LLM_FAST_MODEL=llama-3.1-8b-instant` |
-| Answers say "the paper does not cover this" too often | Lower `MIN_SCORE` to `0.15`, raise `TOP_K` to `10` |
-| Summary misses a section | Heading detection failed on an unusual layout. Check the **Structure** tab to see what was parsed |
-| Torch install fails on Windows | Install it first: `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
-| Port 7860 in use | `GRADIO_PORT=7861` in `.env` |
-
-## 8. Tuning notes
+## 6. Tuning notes
 
 - **Chunk size** — `CHUNK_WORDS=220` suits dense papers. Raise to 350 for surveys, drop to
   150 if answers pull in too much unrelated text.
