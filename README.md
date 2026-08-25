@@ -12,18 +12,6 @@ PDF ──► PyMuPDF + rules ──► sections, figures ─┐
                      LangGraph "ask" ───────────► retrieve → grade → (retry) → answer
 ```
 
-| Layer | Choice |
-| --- | --- |
-| Extraction | PyMuPDF (text, layout, images) + rule-based section detection, Camelot (tables) |
-| API | FastAPI |
-| Orchestration | LangGraph (two graphs: understand, ask) |
-| Vectors | FAISS `IndexFlatIP` (exact cosine), persisted to disk |
-| Embeddings | `BAAI/bge-small-en-v1.5`, local, CPU, free |
-| LLM | Groq (free tier) or DeepSeek, OpenAI-compatible |
-| UI | Gradio |
-
----
-
 ## 1. Prerequisites
 
 | Thing | Why | Notes |
@@ -110,42 +98,3 @@ research-assistant-bot/
 └── data/                        uploads, faiss index, extracted artifacts, reports
 ```
 
-## 4. How the two LangGraph workflows work
-
-**Understand** (runs once per upload)
-
-`pick_sections → summarise_sections → write_summary → write_explanation → extract_findings → suggest_followups`
-
-Sections are ranked so abstract/method/results always get summarised even in a long paper,
-then each is summarised with the fast model (map), and the notes are reduced into a summary,
-a four-part plain-English explanation, and a structured findings object.
-
-**Ask** (runs per question, and it can loop)
-
-`plan → retrieve → grade →  answer`
-&nbsp;&nbsp;&nbsp;&nbsp;`↑___________________|` (when the grader says the excerpts don't cover it)
-
-`plan` rewrites your question into three retrieval queries with different vocabulary.
-`retrieve` unions the FAISS hits and dedupes. `grade` asks the fast model whether those
-excerpts actually answer the question; if not, it feeds back *what's missing* as an extra
-query and searches wider, up to `MAX_RETRIEVAL_LOOPS`. `answer` writes the response with
-`[S1]`-style citations that map to the source slips under the chat.
-
-## 5. Building a library from a folder
-
-```bash
-python scripts/cli.py ingest ~/papers --no-understand   # fast, index only
-python scripts/cli.py ask "which papers use contrastive learning, and how?"
-python scripts/cli.py list
-```
-
-## 6. Tuning notes
-
-- **Chunk size** — `CHUNK_WORDS=220` suits dense papers. Raise to 350 for surveys, drop to
-  150 if answers pull in too much unrelated text.
-- **Scanned PDFs** — PyMuPDF returns nothing for image-only scans. Run OCR first
-  (`ocrmypdf in.pdf out.pdf`) and ingest the output.
-- **Better retrieval** — swap `EMBED_MODEL` to `BAAI/bge-base-en-v1.5` for a real accuracy
-  bump at roughly 3× the embedding time.
-- **Scale** — flat FAISS is exact and stays fast to ~100k chunks (a few hundred papers).
-  Past that, switch `IndexFlatIP` to `IndexHNSWFlat` in `vectorstore.py`.
