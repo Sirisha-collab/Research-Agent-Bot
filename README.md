@@ -89,7 +89,7 @@ research-assistant-bot/
 │       ├── chunking.py          section-aware chunking with overlap
 │       ├── embeddings.py        sentence-transformers wrapper (normalised vectors)
 │       ├── vectorstore.py       FAISS index + metadata, save/load/delete/multi-query
-│       ├── llm.py               Groq/DeepSeek client, retries, JSON mode
+│       ├── llm.py               Groq client, retries, JSON mode
 │       ├── prompts.py           every prompt in one file
 │       ├── graph.py             the two LangGraph workflows
 │       └── pipeline.py          ingest orchestration + artifact persistence
