@@ -50,7 +50,6 @@ _ID_RE = re.compile(r"[A-Za-z0-9._-]+")
 
 
 def _valid_id(value: str) -> bool:
-    """Reject anything that could escape the artifact directory."""
     return bool(value) and ".." not in value and _ID_RE.fullmatch(value) is not None
 
 
@@ -68,7 +67,6 @@ def _load_doc(doc_id: str) -> dict:
 
 
 def _discard(doc_id: str, path: str | Path) -> None:
-    """Roll back a failed ingest so it doesn't leave an orphaned PDF or index entry."""
     try:
         Path(path).unlink(missing_ok=True)
     except OSError:
