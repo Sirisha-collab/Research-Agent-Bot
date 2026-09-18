@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from backend import config
 from backend.core import pipeline
@@ -44,6 +46,38 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
 )
 
+_ID_RE = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def _valid_id(value: str) -> bool:
+    """Reject anything that could escape the artifact directory."""
+    return bool(value) and ".." not in value and _ID_RE.fullmatch(value) is not None
+
+
+def _fields(model: type[BaseModel], data: dict) -> dict:
+    return {k: v for k, v in data.items() if k in model.model_fields}
+
+
+def _load_doc(doc_id: str) -> dict:
+    if not _valid_id(doc_id):
+        raise HTTPException(404, "Unknown document id.")
+    doc = pipeline.load_artifact(doc_id, "document.json")
+    if doc is None:
+        raise HTTPException(404, "Unknown document id.")
+    return doc
+
+
+def _discard(doc_id: str, path: str | Path) -> None:
+    """Roll back a failed ingest so it doesn't leave an orphaned PDF or index entry."""
+    try:
+        Path(path).unlink(missing_ok=True)
+    except OSError:
+        log.warning("Could not remove %s after a failed ingest", path)
+    try:
+        get_store().delete_document(doc_id)
+    except Exception:
+        log.debug("Nothing to roll back in the index for %s", doc_id)
+
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
@@ -60,9 +94,13 @@ def health() -> HealthResponse:
 
 
 @app.post("/ingest", response_model=IngestResponse)
-async def ingest(file: UploadFile = File(...), understand: bool = True) -> IngestResponse:
+async def ingest(
+    file: UploadFile = File(...),
+    understand: bool = Query(True),
+) -> IngestResponse:
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Upload a .pdf file.")
+    filename = Path(file.filename).name
     data = await file.read()
     if not data:
         raise HTTPException(400, "That file is empty.")
@@ -76,20 +114,21 @@ async def ingest(file: UploadFile = File(...), understand: bool = True) -> Inges
     digest = pipeline.file_hash(data)
     existing = pipeline.find_by_hash(digest)
     if existing is not None:
-        return IngestResponse(
-            **{k: v for k, v in existing.items() if k in IngestResponse.model_fields}
-        )
+        return IngestResponse(**_fields(IngestResponse, existing))
 
-    doc_id, path = pipeline.save_pdf(data, file.filename)
-    log.info("Ingesting %s as %s", file.filename, doc_id)
+    doc_id, path = pipeline.save_pdf(data, filename)
+    log.info("Ingesting %s as %s", filename, doc_id)
     try:
         result = pipeline.ingest_pdf(path, doc_id, run_understanding=understand, digest=digest)
     except LLMError as exc:
+        _discard(doc_id, path)
         raise HTTPException(502, str(exc)) from exc
     except Exception as exc:
+        _discard(doc_id, path)
         log.exception("Ingest failed")
         raise HTTPException(500, f"Could not process that PDF: {exc}") from exc
-    return IngestResponse(**{k: v for k, v in result.items() if k in IngestResponse.model_fields})
+    pipeline.clear_answer_cache()
+    return IngestResponse(**_fields(IngestResponse, result))
 
 
 @app.post("/ask", response_model=AskResponse)
@@ -106,46 +145,44 @@ def ask(req: AskRequest) -> AskResponse:
 @app.get("/documents", response_model=list[DocumentSummary])
 def documents() -> list[DocumentSummary]:
     return [
-        DocumentSummary(**{k: v for k, v in d.items() if k in DocumentSummary.model_fields})
+        DocumentSummary(**_fields(DocumentSummary, d))
         for d in get_store().list_documents()
     ]
 
 
 @app.get("/documents/{doc_id}")
 def document(doc_id: str) -> dict:
-    doc = pipeline.load_artifact(doc_id, "document.json")
-    if doc is None:
-        raise HTTPException(404, "Unknown document id.")
-    return doc
+    return _load_doc(doc_id)
 
 
 @app.get("/documents/{doc_id}/tables")
 def tables(doc_id: str) -> list[dict]:
+    _load_doc(doc_id)
     return pipeline.load_artifact(doc_id, "tables.json", default=[])
 
 
 @app.get("/documents/{doc_id}/figures/{figure_id}")
 def figure(doc_id: str, figure_id: str) -> FileResponse:
-    path = pipeline.artifact_path(doc_id, f"images/{figure_id}.png")
-    if not Path(path).exists():
+    if not _valid_id(doc_id) or not _valid_id(figure_id):
+        raise HTTPException(404, "Unknown figure.")
+    path = Path(pipeline.artifact_path(doc_id, f"images/{figure_id}.png"))
+    if not path.is_file():
         raise HTTPException(404, "Unknown figure.")
     return FileResponse(path, media_type="image/png")
 
 
 @app.get("/documents/{doc_id}/report")
-def report(doc_id: str, format: str = Query("md", pattern="^(md|json)$")) -> Response:
-    doc = pipeline.load_artifact(doc_id, "document.json")
-    if doc is None:
-        raise HTTPException(404, "Unknown document id.")
-    title = doc.get("title", "paper")
-    if format == "json":
+def report(doc_id: str, fmt: str = Query("md", alias="format", pattern="^(md|json)$")) -> Response:
+    doc = _load_doc(doc_id)
+    title = doc.get("title") or "paper"
+    if fmt == "json":
         body = json.dumps(doc, ensure_ascii=False, indent=2)
         media, name = "application/json", safe_filename(title, doc_id, "json")
     else:
         body = build_markdown(doc)
         media, name = "text/markdown; charset=utf-8", safe_filename(title, doc_id, "md")
     return Response(
-        content=body,
+        content=body.encode("utf-8"),
         media_type=media,
         headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
@@ -154,17 +191,18 @@ def report(doc_id: str, format: str = Query("md", pattern="^(md|json)$")) -> Res
 @app.get("/library/bibtex")
 def library_bibtex(doc_ids: str = Query("")) -> Response:
     store = get_store()
-    wanted = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    wanted = {d.strip() for d in doc_ids.split(",") if d.strip()}
     docs = []
     for summary in store.list_documents():
-        if wanted and summary["doc_id"] not in wanted:
+        doc_id = summary.get("doc_id")
+        if not doc_id or (wanted and doc_id not in wanted):
             continue
-        full = pipeline.load_artifact(summary["doc_id"], "document.json") or summary
+        full = pipeline.load_artifact(doc_id, "document.json") or summary
         docs.append(full)
     if not docs:
         raise HTTPException(404, "No indexed documents to export.")
     return Response(
-        content=library_to_bibtex(docs),
+        content=library_to_bibtex(docs).encode("utf-8"),
         media_type="application/x-bibtex; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="library.bib"'},
     )
@@ -172,6 +210,7 @@ def library_bibtex(doc_ids: str = Query("")) -> Response:
 
 @app.delete("/documents/{doc_id}")
 def delete_document(doc_id: str) -> dict:
+    _load_doc(doc_id)
     get_store().delete_document(doc_id)
     pipeline.clear_answer_cache()
     return {"deleted": doc_id}
@@ -185,7 +224,7 @@ def reset() -> dict:
 
 
 _DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
-if _DIST.exists():
+if _DIST.is_dir():
     app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="web")
 
 
