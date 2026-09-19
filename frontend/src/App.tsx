@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileJson } from "lucide-react";
+import { Download, FileJson, FileText, X } from "lucide-react";
 import { api } from "./api";
 import type { ChatTurn, DocumentDetail, DocumentSummary, Health } from "./types";
 import { StatusBar } from "./components/StatusBar";
@@ -46,7 +46,10 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
-    if (!busy) return;
+    if (!busy) {
+      setPhase(PHASES[0]);
+      return;
+    }
     let i = 0;
     const timer = setInterval(() => {
       i = Math.min(i + 1, PHASES.length - 1);
@@ -77,6 +80,7 @@ export default function App() {
       const doc = await api.document(id);
       setActive(doc);
       setTurns([]);
+      setTab(doc.explanation ? "explanation" : "structure");
       setNotice(null);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err));
@@ -108,18 +112,26 @@ export default function App() {
   }
 
   async function handleDelete(id: string) {
-    await api.remove(id);
-    if (active?.doc_id === id) setActive(null);
-    setSelected((prev) => prev.filter((x) => x !== id));
-    await refresh();
+    try {
+      await api.remove(id);
+      if (active?.doc_id === id) setActive(null);
+      setSelected((prev) => prev.filter((x) => x !== id));
+      await refresh();
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    }
   }
 
   async function handleReset() {
-    await api.reset();
-    setActive(null);
-    setSelected([]);
-    setTurns([]);
-    await refresh();
+    try {
+      await api.reset();
+      setActive(null);
+      setSelected([]);
+      setTurns([]);
+      await refresh();
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    }
   }
 
   const tabs = [
@@ -171,23 +183,42 @@ export default function App() {
     },
   ];
 
+  const stats = active
+    ? [
+        `${active.page_count} pages`,
+        `${active.n_chunks} chunks`,
+        `${active.tables?.length ?? 0} tables`,
+        `${active.figures?.length ?? 0} figures`,
+        active.elapsed_s ? `${active.elapsed_s}s` : null,
+      ].filter((x): x is string => Boolean(x))
+    : [];
+
   return (
-    <div className="mx-auto max-w-6xl px-5 py-8">
-      <header className="border-b-2 border-ink pb-2">
-        <h1 className="text-3xl font-bold tracking-tight">Research-Assistant-Bot</h1>
-        <p className="kicker mt-1">read the paper · ask the paper</p>
+    <div className="mx-auto max-w-6xl px-5 py-10">
+      <header className="relative pb-4">
+        <h1 className="text-4xl font-bold tracking-tight text-balance">Research-Assistant-Bot</h1>
+        <p className="kicker mt-1.5 text-muted">read the paper · ask the paper</p>
+        <div className="mt-4 h-0.5 w-full bg-gradient-to-r from-ink via-ink/30 to-transparent" />
       </header>
 
       <StatusBar health={health} error={healthError} />
 
       {notice && (
-        <div className="mb-4 border border-warn/40 bg-warn/5 px-3 py-2 text-sm text-warn">
-          {notice}
+        <div className="mb-5 flex items-start gap-3 rounded-lg border border-warn/40 bg-warn/5 px-4 py-3 text-sm text-warn shadow-sm">
+          <p className="min-w-0 flex-1 break-words">{notice}</p>
+          <button
+            type="button"
+            aria-label="close"
+            onClick={() => setNotice(null)}
+            className="-m-1 shrink-0 rounded p-1 opacity-60 transition hover:bg-warn/10 hover:opacity-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[20rem_1fr]">
-        <div className="space-y-5">
+      <div className="mt-5 grid items-start gap-6 lg:grid-cols-[20rem_1fr]">
+        <div className="space-y-5 lg:sticky lg:top-8">
           <UploadPanel onSubmit={handleUpload} busy={busy} phase={phase} />
           <Library
             docs={docs}
@@ -205,27 +236,35 @@ export default function App() {
 
         <main className="min-w-0">
           {!active ? (
-            <div className="border border-rule bg-surface px-6 py-16 text-center">
-              <p className="kicker">no paper open</p>
-              <p className="mt-2 text-muted">
+            <div className="rounded-xl border border-dashed border-rule bg-surface/60 px-6 py-20 text-center">
+              <FileText className="mx-auto h-9 w-9 text-muted/50" strokeWidth={1.25} />
+              <p className="kicker mt-4">no paper open</p>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-muted text-balance">
                 Upload a PDF, or pick one from the library on the left.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              <section className="border border-rule bg-surface p-5">
-                <h2 className="text-xl leading-snug font-semibold">{active.title}</h2>
-                {active.authors && <p className="mt-1 text-sm text-muted italic">{active.authors}</p>}
-                <div className="kicker mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                  <span>{active.page_count} pages</span>
-                  <span>{active.n_chunks} chunks</span>
-                  <span>{active.tables?.length ?? 0} tables</span>
-                  <span>{active.figures?.length ?? 0} figures</span>
-                  {active.elapsed_s ? <span>{active.elapsed_s}s</span> : null}
+              <section className="overflow-hidden rounded-xl border border-rule bg-surface shadow-sm">
+                <div className="border-l-2 border-accent p-5 sm:p-6">
+                  <h2 className="text-xl leading-snug font-semibold text-balance">{active.title}</h2>
+                  {active.authors && (
+                    <p className="mt-1.5 text-sm text-muted italic">{active.authors}</p>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {stats.map((s) => (
+                      <span
+                        key={s}
+                        className="kicker rounded-full border border-rule bg-bg/40 px-2.5 py-0.5 text-muted"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mt-4 border-t border-rule pt-4">
-                  <h3 className="kicker mb-2">summary</h3>
+                <div className="border-t border-rule px-5 py-5 sm:px-6">
+                  <h3 className="kicker mb-2.5 text-muted">summary</h3>
                   {active.summary ? (
                     <Markdown>{active.summary}</Markdown>
                   ) : (
@@ -236,25 +275,25 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-3 border-t border-rule pt-4">
+                <div className="flex flex-wrap gap-2.5 border-t border-rule bg-bg/30 px-5 py-4 sm:px-6">
                   <a
                     href={api.reportUrl(active.doc_id, "md")}
-                    className="kicker flex items-center gap-1.5 border border-rule px-2.5 py-1.5 hover:border-accent hover:text-accent"
+                    className="kicker group flex items-center gap-1.5 rounded-md border border-rule bg-surface px-3 py-1.5 transition-colors hover:border-accent hover:bg-accent/5 hover:text-accent"
                   >
-                    <Download className="h-3.5 w-3.5" />
+                    <Download className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
                     report.md
                   </a>
                   <a
                     href={api.reportUrl(active.doc_id, "json")}
-                    className="kicker flex items-center gap-1.5 border border-rule px-2.5 py-1.5 hover:border-accent hover:text-accent"
+                    className="kicker group flex items-center gap-1.5 rounded-md border border-rule bg-surface px-3 py-1.5 transition-colors hover:border-accent hover:bg-accent/5 hover:text-accent"
                   >
-                    <FileJson className="h-3.5 w-3.5" />
+                    <FileJson className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
                     document.json
                   </a>
                 </div>
               </section>
 
-              <section className="border border-rule bg-surface p-5">
+              <section className="rounded-xl border border-rule bg-surface p-5 shadow-sm sm:p-6">
                 <Tabs tabs={tabs} active={tab} onChange={setTab} />
               </section>
             </div>
