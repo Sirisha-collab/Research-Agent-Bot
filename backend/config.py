@@ -1,3 +1,4 @@
+"""Central configuration. Everything tunable lives here or in .env."""
 from __future__ import annotations
 
 import os
@@ -17,20 +18,21 @@ for _d in (UPLOAD_DIR, INDEX_DIR, EXTRACT_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------- llm
+# provider: "groq" (free tier) or "deepseek". Both speak the OpenAI wire format.
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 
 _PROVIDERS = {
     "groq": {
         "base_url": "https://api.groq.com/openai/v1",
         "key_env": "GROQ_API_KEY",
-        "default_model": "llama-3.3-70b-versatile",
-        "fast_model": "llama-3.1-8b-instant",
+        "default_model": "openai/gpt-oss-120b",
+        "fast_model": "openai/gpt-oss-20b",
     },
     "deepseek": {
         "base_url": "https://api.deepseek.com",
         "key_env": "DEEPSEEK_API_KEY",
-        "default_model": "deepseek-chat",
-        "fast_model": "deepseek-chat",
+        "default_model": "deepseek-v4-pro",
+        "fast_model": "deepseek-v4-flash",
     },
 }
 
@@ -42,11 +44,12 @@ LLM_FAST_MODEL = os.getenv("LLM_FAST_MODEL", _p["fast_model"])
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1400"))
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "90"))
+LLM_RETRIES = int(os.getenv("LLM_RETRIES", "3"))
 
 # ---------------------------------------------------------------- embeddings
 EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
 EMBED_BATCH = int(os.getenv("EMBED_BATCH", "32"))
-
+# bge models want this prefix on the *query* side only.
 EMBED_QUERY_PREFIX = os.getenv(
     "EMBED_QUERY_PREFIX", "Represent this sentence for searching relevant passages: "
 )
@@ -77,6 +80,8 @@ GRADIO_SHARE = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 # map step is skipped entirely (16 calls -> 1).
 MAP_REDUCE_THRESHOLD = int(os.getenv("MAP_REDUCE_THRESHOLD", "18000"))
 SYNTHESIS_MAX_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "2600"))
+# Query rewriting and context grading via LLM. Turn off to save 2 calls per
+# question at some cost to retrieval quality on oddly-phrased questions.
 LLM_QUERY_PLANNING = os.getenv("LLM_QUERY_PLANNING", "true").lower() == "true"
 LLM_CONTEXT_GRADING = os.getenv("LLM_CONTEXT_GRADING", "true").lower() == "true"
 GRADE_TOP_SCORE = float(os.getenv("GRADE_TOP_SCORE", "0.55"))

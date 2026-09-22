@@ -17,7 +17,7 @@ from backend.config import (
     TOP_K,
 )
 from backend.core import prompts
-from backend.core.llm import LLMError, chat, chat_json
+from backend.core.llm import FatalLLMError, LLMError, chat, chat_json
 from backend.core.vectorstore import get_store
 
 log = logging.getLogger(__name__)
@@ -98,6 +98,8 @@ def _summarise_sections(state: UnderstandState) -> UnderstandState:
                 max_tokens=350,
             )
             calls += 1
+        except FatalLLMError:
+            raise
         except LLMError as exc:
             errors.append(f"section '{section['title']}': {exc}")
             note = text[:900]
