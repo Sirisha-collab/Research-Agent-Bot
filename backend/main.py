@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from backend import config
 from backend.core import pipeline
-from backend.core.llm import LLMError
+from backend.core.llm import FatalLLMError, LLMError
 from backend.core.citations import library_to_bibtex
 from backend.core.report import build_markdown, safe_filename
 from backend.core.vectorstore import get_store
@@ -118,6 +118,8 @@ async def ingest(
     log.info("Ingesting %s as %s", filename, doc_id)
     try:
         result = pipeline.ingest_pdf(path, doc_id, run_understanding=understand, digest=digest)
+    except FatalLLMError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except LLMError as exc:
         _discard(doc_id, path)
         raise HTTPException(502, str(exc)) from exc
@@ -136,6 +138,8 @@ def ask(req: AskRequest) -> AskResponse:
         raise HTTPException(400, "Nothing indexed yet. Upload a PDF first.")
     try:
         return AskResponse(**pipeline.ask(req.question, req.doc_ids or None))
+    except FatalLLMError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
 
@@ -167,6 +171,33 @@ def figure(doc_id: str, figure_id: str) -> FileResponse:
     if not path.is_file():
         raise HTTPException(404, "Unknown figure.")
     return FileResponse(path, media_type="image/png")
+
+
+@app.get("/documents/{doc_id}/pdf")
+def source_pdf(doc_id: str) -> FileResponse:
+    doc = get_store().documents.get(doc_id) or pipeline.load_artifact(doc_id, "document.json")
+    if not doc:
+        raise HTTPException(404, "Unknown document id.")
+    stored = Path(str(doc.get("pdf_path", "")))
+    if not stored.is_absolute():
+        stored = (config.UPLOAD_DIR / stored.name).resolve()
+    stored = stored.resolve()
+    uploads = config.UPLOAD_DIR.resolve()
+    if uploads not in stored.parents:
+        raise HTTPException(403, "Refusing to serve a file outside the upload folder.")
+    if not stored.exists():
+        raise HTTPException(
+            404,
+            "The original PDF is no longer on disk. Re-upload it to browse pages.",
+        )
+    return FileResponse(
+        stored,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{stored.name}"',
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
 
 
 @app.get("/documents/{doc_id}/report")

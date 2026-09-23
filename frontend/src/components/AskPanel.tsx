@@ -1,19 +1,84 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, RotateCcw, Send } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Loader2, RotateCcw, Send } from "lucide-react";
 import clsx from "clsx";
 import { Markdown } from "./Markdown";
+import { CopyButton } from "./CopyButton";
+import { GroundingChip } from "./GroundingChip";
+import { citedLabels } from "../lib/grounding";
 import type { ChatTurn, Source } from "../types";
 
-function Slip({ source }: { source: Source }) {
+function Slip({
+  source,
+  cited,
+  onOpenPage,
+}: {
+  source: Source;
+  cited: boolean;
+  onOpenPage?: (source: Source) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const body = source.full_text || source.snippet;
+  const truncated = body.length > source.snippet.length;
+  const shown = open ? body : source.snippet;
+
   return (
-    <div className="border-l-2 border-accent py-1 pl-3">
-      <div className="kicker">
-        [{source.label}] {source.doc_title.slice(0, 48)} · {source.section} · p.{source.page} · sim{" "}
-        {source.score}
+    <div
+      className={clsx(
+        "border-l-2 py-1 pl-3",
+        cited ? "border-accent bg-accent-soft/40" : "border-rule",
+      )}
+    >
+      <div className="kicker flex flex-wrap items-center gap-x-2">
+        <span className={cited ? "text-accent" : undefined}>[{source.label}]</span>
+        <span>{source.doc_title.slice(0, 44)}</span>
+        <span>· {source.section}</span>
+        <span>· p.{source.page}</span>
+        <span>· sim {source.score}</span>
+        {source.kind !== "text" && <span className="text-accent">· {source.kind}</span>}
+        {onOpenPage && (
+          <button
+            onClick={() => onOpenPage(source)}
+            title={`Open page ${source.page} of the PDF`}
+            className="flex items-center gap-1 hover:text-accent"
+          >
+            <BookOpen className="h-3 w-3" />
+            open page
+          </button>
+        )}
       </div>
-      <p className="mt-0.5 text-sm leading-relaxed text-muted">{source.snippet}…</p>
+
+      {source.kind === "table" ? (
+        <div className="mt-1 overflow-x-auto text-sm">
+          <Markdown>{shown}</Markdown>
+        </div>
+      ) : (
+        <p className="mt-0.5 text-sm leading-relaxed text-muted">
+          {shown}
+          {!open && truncated ? "…" : ""}
+        </p>
+      )}
+
+      {truncated && (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="kicker mt-1 flex items-center gap-1 hover:text-accent"
+        >
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {open ? "show less" : `show full passage · ${body.split(/\s+/).length} words`}
+        </button>
+      )}
     </div>
   );
+}
+
+function withCitations(turn: ChatTurn): string {
+  const lines = [turn.content, "", "Sources:"];
+  for (const s of turn.sources ?? []) {
+    lines.push(`[${s.label}] ${s.doc_title} - ${s.section}, p.${s.page} (similarity ${s.score})`);
+    lines.push(s.full_text || s.snippet);
+    lines.push("");
+  }
+  return lines.join("\n");
 }
 
 export function AskPanel({
@@ -22,12 +87,14 @@ export function AskPanel({
   suggestions,
   onAsk,
   onReset,
+  onOpenPage,
 }: {
   turns: ChatTurn[];
   busy: boolean;
   suggestions: string[];
   onAsk: (question: string) => void;
   onReset: () => void;
+  onOpenPage?: (source: Source) => void;
 }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -53,30 +120,67 @@ export function AskPanel({
           </p>
         )}
 
-        {turns.map((turn, i) =>
-          turn.role === "user" ? (
-            <p key={i} className="border-l-2 border-ink pl-3 font-semibold leading-snug">
-              {turn.content}
-            </p>
-          ) : (
+        {turns.map((turn, i) => {
+          if (turn.role === "user") {
+            return (
+              <p key={i} className="border-l-2 border-ink pl-3 font-semibold leading-snug">
+                {turn.content}
+              </p>
+            );
+          }
+          const cited = citedLabels(turn.content);
+          const sources = turn.sources ?? [];
+          const usedCount = sources.filter((s) => cited.has(s.label)).length;
+          return (
             <div key={i}>
-              <Markdown>{turn.content}</Markdown>
-              {turn.sources && turn.sources.length > 0 && (
-                <details className="mt-2">
+              <Markdown
+                onCitationClick={
+                  onOpenPage
+                    ? (label) => {
+                        const hit = sources.find((s) => s.label === label);
+                        if (hit) onOpenPage(hit);
+                      }
+                    : undefined
+                }
+              >
+                {turn.content}
+              </Markdown>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <GroundingChip turn={turn} />
+                <CopyButton text={turn.content} />
+                {sources.length > 0 && (
+                  <CopyButton text={withCitations(turn)} label="copy with sources" />
+                )}
+              </div>
+              {sources.length > 0 && (
+                <details className="mt-2" open={usedCount > 0 && usedCount <= 3}>
                   <summary className="kicker cursor-pointer hover:text-ink">
-                    {turn.sources.length} sources · {turn.rounds ?? 1} retrieval round
-                    {(turn.rounds ?? 1) > 1 ? "s" : ""}
+                    {usedCount > 0
+                      ? `${usedCount} of ${sources.length} passages cited`
+                      : `${sources.length} passages retrieved`}
+                    {" · "}
+                    {turn.rounds ?? 1} round{(turn.rounds ?? 1) > 1 ? "s" : ""}
                   </summary>
                   <div className="mt-2 space-y-3">
-                    {turn.sources.map((s) => (
-                      <Slip key={s.label} source={s} />
-                    ))}
+                    {[...sources]
+                      .sort(
+                        (a, b) =>
+                          Number(cited.has(b.label)) - Number(cited.has(a.label)),
+                      )
+                      .map((s) => (
+                        <Slip
+                          key={s.label}
+                          source={s}
+                          cited={cited.has(s.label)}
+                          onOpenPage={onOpenPage}
+                        />
+                      ))}
                   </div>
                 </details>
               )}
             </div>
-          ),
-        )}
+          );
+        })}
 
         {busy && (
           <div className="kicker working flex items-center gap-2">

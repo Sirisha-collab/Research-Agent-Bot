@@ -9,6 +9,7 @@ from typing import Any
 
 from backend.config import (
     LLM_API_KEY,
+    LLM_RETRIES,
     LLM_BASE_URL,
     LLM_FAST_MODEL,
     LLM_MAX_TOKENS,
@@ -23,6 +24,55 @@ log = logging.getLogger(__name__)
 
 class LLMError(RuntimeError):
     pass
+
+
+class FatalLLMError(LLMError):
+    """Configuration-level failure: bad model name, bad key, no credit."""
+
+NON_RETRYABLE = {400, 401, 402, 403, 404, 422}
+
+FATAL_HINTS = (
+    "does not exist or you do not have access",
+    "model_not_found",
+    "model_decommissioned",
+    "insufficient balance",
+    "invalid api key",
+    "incorrect api key",
+)
+
+
+def _status_of(exc: Exception) -> int | None:
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    if isinstance(status, int):
+        return status
+    resp = getattr(exc, "response", None)
+    code = getattr(resp, "status_code", None)
+    return code if isinstance(code, int) else None
+
+
+def _is_fatal(exc: Exception) -> bool:
+    if _status_of(exc) in NON_RETRYABLE:
+        return True
+    text = str(exc).lower()
+    return any(hint in text for hint in FATAL_HINTS)
+
+
+def _explain(exc: Exception) -> str:
+    status = _status_of(exc)
+    text = str(exc)
+    if status == 404 or "model_not_found" in text or "does not exist" in text:
+        return (
+            f"Model '{LLM_MODEL}' is not available on {LLM_PROVIDER}. "
+            "Providers retire models regularly. Check the current list at "
+            f"{LLM_BASE_URL}/models and set LLM_MODEL / LLM_FAST_MODEL in .env."
+        )
+    if status == 401:
+        return f"{LLM_PROVIDER} rejected the API key. Check it in .env."
+    if status == 402 or "insufficient balance" in text.lower():
+        return f"The {LLM_PROVIDER} account has no credit remaining."
+    if status in (400, 422):
+        return f"{LLM_PROVIDER} rejected the request: {text}"
+    return text
 
 
 @lru_cache(maxsize=1)
@@ -45,8 +95,9 @@ def chat(
     temperature: float | None = None,
     max_tokens: int | None = None,
     json_mode: bool = False,
-    retries: int = 3,
+    retries: int | None = None,
 ) -> str:
+    retries = LLM_RETRIES if retries is None else retries
     messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
     kwargs: dict[str, Any] = {
         "model": LLM_FAST_MODEL if fast else LLM_MODEL,
@@ -62,30 +113,31 @@ def chat(
         try:
             resp = _client().chat.completions.create(**kwargs)
             return (resp.choices[0].message.content or "").strip()
-        except LLMError:
+        except FatalLLMError:
             raise
         except Exception as exc:
-            status = getattr(exc, "status_code", None)
-            if status in (400, 401, 402, 403, 422):
-                raise LLMError(
-                    f"{LLM_PROVIDER} rejected the request ({status}). "
-                    "402 = empty balance, 401 = bad key, 400/422 = bad request. "
-                    "Retrying will not help."
-                ) from exc
+            if _is_fatal(exc):
+                # No amount of retrying fixes a bad model name, key or balance.
+                raise FatalLLMError(_explain(exc)) from exc
             last = exc
+            if attempt == retries - 1:
+                break
             wait = 2 ** attempt * 2
-            log.warning("LLM call failed (%s). Retrying in %ss", exc, wait)
+            log.warning("LLM call failed (%s). Retry %d/%d in %ss",
+                        exc, attempt + 1, retries - 1, wait)
             time.sleep(wait)
     raise LLMError(f"LLM request failed after {retries} attempts: {last}")
 
 
 def chat_json(prompt: str, system: str, *, fast: bool = False,
               fallback: Any = None, max_tokens: int | None = None) -> Any:
-    """Ask for JSON and parse defensively - models still wrap it in fences."""
+
     system = system + "\nRespond with a single valid JSON object and nothing else."
     try:
         raw = chat(prompt, system, fast=fast, json_mode=True, max_tokens=max_tokens,
                    temperature=0.0)
+    except FatalLLMError:
+        raise
     except LLMError:
         if fallback is not None:
             return fallback
