@@ -71,4 +71,15 @@ export const api = {
   reportUrl(docId: string, format: "md" | "json"): string {
     return `${BASE}/documents/${docId}/report?format=${format}`;
   },
+
+  bibtexUrl(docIds: string[]): string {
+    const scope = docIds.length > 0 ? `?doc_ids=${docIds.join(",")}` : "";
+    return `${BASE}/library/bibtex${scope}`;
+  },
+
+  pdfUrl(docId: string, page?: number): string {
+    const base = `${BASE}/documents/${docId}/pdf`;
+    if (!page || page < 1) return base;
+    return `${base}#page=${page}&view=FitH`;
+  },
 };
