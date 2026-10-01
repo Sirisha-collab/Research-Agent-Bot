@@ -70,7 +70,10 @@ cd frontend
 npm run dev
 ```
 
-## 3. What each file does
+## 3. Screenshots
+<img width="1412" height="557" alt="Screenshot 2026-10-01 171446" src="https://github.com/user-attachments/assets/a1977385-0f2b-4209-94a0-b871f32a470b" />
+
+## 4. What each file does
 
 ```
 research-assistant-bot/
